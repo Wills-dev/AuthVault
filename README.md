@@ -3,9 +3,11 @@
 A Flutter/Dart and planned NestJS/PostgreSQL academic MFA prototype. Intended flow:
 password → biometric-protected challenge signature → email OTP → protected dashboard.
 
-**Phase 1 only is implemented.** The application currently displays a development
-foundation page. There is no backend, authentication or simulated login behavior.
-Phase 2 requires explicit approval.
+**Phases 1 and 2 are implemented.** Welcome, login, registration, device-readiness
+and email-code screens are available. Dashboard/profile designs live in a labeled
+debug-only gallery: choose **Development UI preview** from welcome. There is no
+backend, authenticated session or simulated successful login. Normal protected
+routes redirect to login. Phase 3 requires explicit approval.
 
 ## Setup
 
@@ -26,8 +28,8 @@ an API 37 emulator were detected. Flutter Doctor finds and uses Android Studio's
 bundled OpenJDK 25 even though `java` on PATH has no configured runtime.
 Android SDK Platform 36, Build Tools 36.0.0 and NDK 28.2.13676358 are verified
 installed. The follow-up `flutter build apk --debug` succeeded, and the resulting
-APK was installed and launched on `emulator-5554`; the foundation screen was
-visually confirmed. No Gradle or application changes were necessary. See the
+APK was installed and launched on `emulator-5554`. The current Phase 2 UI was also
+built, launched and visually inspected; see Phase 2 validation below. No Gradle or application changes were necessary. See the
 [validation record](docs/phase-1-validation.md) for commands, timings and warnings.
 This debug emulator smoke check does not validate biometric security.
 
@@ -61,14 +63,25 @@ plugins are installed for later phases but do not imply implemented security.
 
 ## Validation and workflow
 
-Phase 1 checks cover formatting, static analysis and a small-screen/large-text
-widget layout check. See [Phase 1 validation](docs/phase-1-validation.md) for actual
-results and limits. Later tests will cover repositories, authentication states,
-session handling, OTP timing, error mapping and real backend enforcement.
+Phase 2 adds widget checks for forms, navigation, error/loading states, OTP paste,
+biometric readiness and protected routes, including large-text/keyboard layouts.
+See [Phase 1 validation](docs/phase-1-validation.md),
+[Phase 2 notes](docs/phase-2-implementation.md),
+[navigation](docs/navigation.md) and [Phase 2 results](docs/phase-2-validation.md).
+
+Capture emulator screenshots and run the screen inspection:
+
+```sh
+flutter drive --driver=test_driver/ui_gallery_driver.dart --target=integration_test/ui_gallery_test.dart -d emulator-5554
+```
+
+The driver captures images in `docs/images/phase-2/`; its capture callback does not
+assert pixel equality. Inspect images separately. Build/run the normal app afterward
+because the inspection uses an integration-test entrypoint.
 
 Each subsequent phase updates documentation, runs applicable checks, fixes failures,
-suggests a commit and stops for approval. Next: Phase 2 authentication screens and
-navigation, followed by backend, native signing, OTP, sessions and full evaluation.
+suggests a commit and stops for approval. Next: Phase 3 backend registration and password login, followed by native signing,
+OTP, sessions and full evaluation.
 
 Known limitations: no real MFA yet; iOS toolchain incomplete; database unavailable;
 real-device biometrics untested; account recovery and device attestation remain

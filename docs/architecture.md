@@ -4,7 +4,11 @@
 
 Phase 1 establishes tooling, design tokens and the app shell. It implements no
 registration, login, biometric verification, OTP, sessions or protected resources.
-The foundation page is temporary developer UI, not the Phase 2 welcome screen.
+Phase 2 replaces the temporary foundation page with authentication UI and debug
+screen previews. Validation is in auth/domain, the local biometric capability
+service is in core/security, and async UI state is in auth/presentation/providers.
+There is still no backend or session implementation. See phase-2-implementation.md
+and navigation.md for current UI boundaries.
 
 ## Layout
 
@@ -12,9 +16,9 @@ Keep the generated Flutter project at the root to avoid disruptive moves.
 
 ```text
 lib/
-  app/                 app, centralized router, theme, temporary foundation page
+  app/                 app, centralized router, theme, debug-only preview gallery
   core/widgets/        PascalCase widget directories and matching filenames
-  features/            added when features have real implementation
+  features/            auth, dashboard and profile UI; data layers added later
     auth/              data/{datasources,models,repositories},
                        domain/{entities,repositories,usecases},
                        presentation/{pages,widgets,providers}
