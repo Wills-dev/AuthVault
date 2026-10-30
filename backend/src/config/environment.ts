@@ -17,11 +17,15 @@ export function validateEnvironment(env: Record<string, unknown>) {
   for (const key of ["OTP_HMAC_KEY", "ACCESS_JWT_KEY"]) {
     if (
       !/^[a-f0-9]{64}$/i.test(String(env[key])) ||
-      env[key] === env.AUDIT_HMAC_KEY
+      String(env[key]).toLowerCase() ===
+        String(env.AUDIT_HMAC_KEY).toLowerCase()
     )
       throw new Error(`${key} requires an independent 32-byte hex secret`);
   }
-  if (env.OTP_HMAC_KEY === env.ACCESS_JWT_KEY)
+  if (
+    String(env.OTP_HMAC_KEY).toLowerCase() ===
+    String(env.ACCESS_JWT_KEY).toLowerCase()
+  )
     throw new Error("Authentication keys must be independent");
   const smtpPort = Number(env.SMTP_PORT ?? 1025),
     cooldown = Number(env.OTP_RESEND_SECONDS ?? 60);

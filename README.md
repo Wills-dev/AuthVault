@@ -3,7 +3,7 @@
 A Flutter/Dart and planned NestJS/PostgreSQL academic MFA prototype. Intended flow:
 password → biometric-protected challenge signature → email OTP → protected dashboard.
 
-**Phases 1–5 are implemented.** Registration and password authentication use
+**Phases 1–5 are implemented; Phase 6 audit and hardening are complete.** Registration and password authentication use
 NestJS/PostgreSQL. Android Keystore signatures prove device biometric authorization;
 SMTP email OTP completes MFA before access and rotating refresh credentials are issued.
 The protected dashboard retrieves real account/security data. Debug previews remain isolated.
@@ -11,7 +11,7 @@ The protected dashboard retrieves real account/security data. Debug previews rem
 Android emulator checks establish OS prompt/signature behavior, not physical hardware
 backing. iOS signing, recovery and server-side hardware attestation remain unimplemented.
 See [Phase 5 architecture and security](docs/phase-5-implementation.md) and
-[actual validation results](docs/phase-5-validation.md). Phase 6 requires approval.
+[actual validation results](docs/phase-5-validation.md). Phase 6 audit and successful manual native MFA retest are recorded below. Phase 7 requires approval.
 
 ## Setup
 
@@ -174,3 +174,42 @@ emulator-only launch diagnostic with `--no-enable-impeller --enable-software-ren
 The normal welcome screen was visually verified with those flags; the full MFA E2E
 had passed with the default renderer. No Android project configuration was changed.
 See the [validation record](docs/phase-5-validation.md) for the exact distinction.
+
+
+## Phase 6: security review and readiness
+
+The audit preserves the application architecture and adds security regression,
+coverage, performance and accessibility evidence. Release builds no longer fall
+back to the debug signing identity; without owned signing properties they are
+unsigned audit artifacts. Logout/restoration and stale secure-storage write races
+are hardened, and Android backup/transfer exclusions are explicit.
+
+**Not production ready:** remote biometric attestation is absent, so a modified
+client can enrol/sign with a software key. Registration still exposes duplicate
+email status. Operational TLS/SMTP, retention, backups, monitoring, owned distribution
+identity, physical devices and iOS remain gates. Runtime npm audit reports no known
+advisories; six Low development-tool dependency entries remain unresolved.
+
+Phase 6 native cancellation and the complete post-remediation MFA scenario passed.
+The final flow used manual enrolled-fingerprint input and the documented emulator
+rendering workaround, then real SMTP OTP, authenticated dashboard/profile, secure
+session restoration and logout. The scenario completed in 29 seconds excluding
+build/install. The normal app was rebuilt and its signed-out screen visually verified. Wrong virtual-finger attempts and earlier timeouts remain recorded
+as failures. No real-person biometric accuracy or hardware attestation is claimed.
+
+- [Security audit and risk register](docs/phase-6-security-audit.md)
+- [Actual validation results](docs/phase-6-validation.md)
+- [Threat model](docs/threat-model.md)
+- [Line and branch coverage](docs/test-coverage.md)
+- [Measured performance and limits](docs/performance-evaluation.md)
+- [Production readiness and deployment gates](docs/production-readiness.md)
+
+```sh
+flutter test --coverage
+cd backend
+npm run test:coverage
+node scripts/summarize-phase6.mjs
+node scripts/audit-pub.mjs
+```
+
+No production deployment or Phase 7 work was performed.

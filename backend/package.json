@@ -15,7 +15,8 @@
     "test:integration": "node scripts/test-integration.mjs",
     "db:migrate": "prisma migrate deploy",
     "db:local": "node scripts/local-db.mjs",
-    "smoke": "node scripts/smoke.mjs"
+    "smoke": "node scripts/smoke.mjs",
+    "test:coverage": "node scripts/test-integration.mjs --coverage"
   },
   "keywords": [],
   "author": "",

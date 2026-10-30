@@ -1,0 +1,194 @@
+{
+  "backendTotal": {
+    "lines": {
+      "total": 1656,
+      "covered": 1647,
+      "skipped": 0,
+      "pct": 99.45
+    },
+    "statements": {
+      "total": 1656,
+      "covered": 1647,
+      "skipped": 0,
+      "pct": 99.45
+    },
+    "functions": {
+      "total": 111,
+      "covered": 111,
+      "skipped": 0,
+      "pct": 100
+    },
+    "branches": {
+      "total": 443,
+      "covered": 371,
+      "skipped": 0,
+      "pct": 83.74
+    },
+    "branchesTrue": {
+      "total": 0,
+      "covered": 0,
+      "skipped": 0,
+      "pct": 100
+    }
+  },
+  "backendModules": {
+    "bootstrap/configure": {
+      "lines": {
+        "total": 47,
+        "covered": 47,
+        "percent": 100
+      },
+      "branches": {
+        "total": 2,
+        "covered": 2,
+        "percent": 100
+      }
+    },
+    "auth": {
+      "lines": {
+        "total": 388,
+        "covered": 388,
+        "percent": 100
+      },
+      "branches": {
+        "total": 87,
+        "covered": 71,
+        "percent": 81.61
+      }
+    },
+    "biometric": {
+      "lines": {
+        "total": 409,
+        "covered": 407,
+        "percent": 99.51
+      },
+      "branches": {
+        "total": 112,
+        "covered": 93,
+        "percent": 83.04
+      }
+    },
+    "common": {
+      "lines": {
+        "total": 76,
+        "covered": 74,
+        "percent": 97.37
+      },
+      "branches": {
+        "total": 26,
+        "covered": 19,
+        "percent": 73.08
+      }
+    },
+    "config": {
+      "lines": {
+        "total": 59,
+        "covered": 57,
+        "percent": 96.61
+      },
+      "branches": {
+        "total": 46,
+        "covered": 41,
+        "percent": 89.13
+      }
+    },
+    "health": {
+      "lines": {
+        "total": 15,
+        "covered": 15,
+        "percent": 100
+      },
+      "branches": {
+        "total": 5,
+        "covered": 4,
+        "percent": 80
+      }
+    },
+    "otp": {
+      "lines": {
+        "total": 342,
+        "covered": 339,
+        "percent": 99.12
+      },
+      "branches": {
+        "total": 88,
+        "covered": 75,
+        "percent": 85.23
+      }
+    },
+    "prisma": {
+      "lines": {
+        "total": 31,
+        "covered": 31,
+        "percent": 100
+      },
+      "branches": {
+        "total": 4,
+        "covered": 3,
+        "percent": 75
+      }
+    },
+    "session": {
+      "lines": {
+        "total": 222,
+        "covered": 222,
+        "percent": 100
+      },
+      "branches": {
+        "total": 63,
+        "covered": 56,
+        "percent": 88.89
+      }
+    },
+    "users": {
+      "lines": {
+        "total": 67,
+        "covered": 67,
+        "percent": 100
+      },
+      "branches": {
+        "total": 10,
+        "covered": 7,
+        "percent": 70
+      }
+    }
+  },
+  "flutterModules": {
+    "lib/app": {
+      "total": 81,
+      "covered": 70,
+      "percent": 86.42
+    },
+    "lib/core": {
+      "total": 132,
+      "covered": 100,
+      "percent": 75.76
+    },
+    "lib/features/auth": {
+      "total": 703,
+      "covered": 536,
+      "percent": 76.24
+    },
+    "lib/features/dashboard": {
+      "total": 58,
+      "covered": 41,
+      "percent": 70.69
+    },
+    "lib/features/profile": {
+      "total": 6,
+      "covered": 6,
+      "percent": 100
+    }
+  },
+  "flutterTotal": {
+    "total": 980,
+    "covered": 753
+  },
+  "unreportedFlutterSources": [
+    "lib/main.dart",
+    "lib/app/theme/design_tokens.dart",
+    "lib/features/auth/domain/repositories/auth_repository.dart"
+  ],
+  "flutterBranches": "not collected by flutter test --coverage",
+  "exclusions": "Backend generated Prisma and main.ts; Flutter reported libraries only; Kotlin uninstrumented"
+}

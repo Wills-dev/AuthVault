@@ -1,4 +1,4 @@
-# AuthVault backend — Phase 5
+# AuthVault backend — Phase 6 audit
 
 NestJS 12.3.2, strict TypeScript, PostgreSQL and Prisma 7.10.1. Password and biometric stages return expiring pending credentials. Email OTP completes
 MFA and issues a five-minute JWT and rotating seven-day session refresh credential.
@@ -157,3 +157,18 @@ only HMAC/hash verification material. See [API](../docs/api-contract.md),
 [implementation and sequence](../docs/phase-5-implementation.md) and
 [validation](../docs/phase-5-validation.md). No scheduled data-retention cleanup is
 implemented yet; deploy explicit retention policies before operating at scale.
+
+
+## Phase 6 audit tooling
+
+`npm run test:coverage` runs unit and integration suites against the isolated test
+DB and writes V8 line/branch coverage. `node scripts/summarize-phase6.mjs` combines
+that output with repository-root Flutter LCOV and measured local server-flow samples
+into non-secret documentation evidence. `node scripts/audit-pub.mjs` queries OSV
+using only public hosted Pub package names/versions from the lockfile; it sends no
+application source, credentials or account data. Network failure is not a passing audit.
+
+See [readiness](../docs/production-readiness.md) and [audit](../docs/phase-6-security-audit.md).
+The server still lacks remote key attestation. Node software-key fixtures can complete
+the signature stage, which must not be described as remote proof of a biometric
+prompt. No production deployment is approved by local test or coverage success.

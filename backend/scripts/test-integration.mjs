@@ -14,7 +14,13 @@ const env = {
 };
 for (const args of [
   ["prisma", "migrate", "deploy"],
-  ["jest", "--runInBand", "--testPathPatterns=integration"],
+  [
+    "jest",
+    "--runInBand",
+    ...(process.argv.includes("--coverage")
+      ? ["--coverage"]
+      : ["--testPathPatterns=integration"]),
+  ],
 ]) {
   const result = spawnSync("npx", args, { env, stdio: "inherit" });
   if (result.status !== 0) process.exit(result.status ?? 1);

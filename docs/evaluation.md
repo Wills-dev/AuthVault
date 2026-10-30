@@ -24,3 +24,13 @@ refresh-token reuse, logout and direct protected-resource requests.
 
 Automated security tests are planned for Phases 3–7. Device testing, performance
 measurement and academic-defense rehearsal remain outstanding.
+
+
+## Phase 6 measured evidence
+
+See [coverage](test-coverage.md), [local measured performance](performance-evaluation.md),
+[security audit](phase-6-security-audit.md) and [actual validation](phase-6-validation.md).
+No physical biometric error rates, independent penetration test, formal certification
+or production performance was measured. The final native full-flow retest passed with manual enrolled-fingerprint input
+and the documented emulator rendering workaround (29 seconds excluding build/install).
+Historical Phase 5 results do not substitute for this new Phase 6 evidence.

@@ -1,0 +1,5 @@
+{
+  "scope": "tracked code/configuration, regex triage only, manual review required; not a secret scanner or SAST proof",
+  "filesScanned": 117,
+  "matches": []
+}

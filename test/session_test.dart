@@ -23,16 +23,35 @@ SessionCredentials credentials(String name, {bool expired = false}) =>
 class MemoryStorage implements SessionStorage {
   String? token;
   bool fail = false;
+  bool failClear = false;
+  Completer<void>? clearPending;
+  Completer<void>? clearStarted;
+  Completer<String?>? readPending;
+  Completer<void>? writePending;
+  Completer<void>? writeStarted;
   @override
-  Future<String?> read() async => token;
+  Future<String?> read() async => readPending?.future ?? Future.value(token);
   @override
   Future<void> write(String value) async {
     if (fail) throw StateError('fixture storage failure');
+    final pending = writePending;
+    writePending = null;
+    if (pending != null) {
+      writeStarted?.complete();
+      await pending.future;
+    }
     token = value;
   }
 
   @override
   Future<void> clear() async {
+    if (failClear) throw StateError("fixture deletion failure");
+    final gate = clearPending;
+    clearPending = null;
+    if (gate != null) {
+      clearStarted?.complete();
+      await gate.future;
+    }
     token = null;
   }
 }
@@ -375,7 +394,9 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
     await tester.pump(const Duration(seconds: 2));
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
     await tester.pumpAndSettle();
     expect(
       container.read(appRouterProvider).routeInformationProvider.value.uri.path,
@@ -384,4 +405,91 @@ void main() {
     expect(storage.token, isNull);
     await tester.pumpWidget(const SizedBox.shrink());
   });
+  test(
+    'audit: secure-store deletion failure still attempts server revocation',
+    () async {
+      await container.read(sessionProvider.future);
+      final session = container.read(sessionProvider.notifier);
+      await session.accept(credentials('old'));
+      storage.failClear = true;
+      expect(await session.logout(), isFalse);
+      expect(container.read(sessionProvider).value, isNull);
+      expect(repo.logouts, 1);
+    },
+  );
+  test(
+    'audit: logout during initial storage read cannot restore access',
+    () async {
+      storage.readPending = Completer<String?>();
+      final restore = container.read(sessionProvider.future);
+      final session = container.read(sessionProvider.notifier);
+      final logout = session.logout();
+      expect(
+        container.read(sessionProvider).isLoading,
+        isFalse,
+        reason: 'Local logout must take effect before storage resolves',
+      );
+      storage.readPending!.complete('refresh-old');
+      await logout;
+      await restore;
+      expect(container.read(sessionProvider).value, isNull);
+      expect(repo.refreshes, 0);
+    },
+  );
+
+  test(
+    'audit: stale refresh persistence cannot erase a newly accepted session',
+    () async {
+      await container.read(sessionProvider.future);
+      final session = container.read(sessionProvider.notifier);
+      await session.accept(credentials('old', expired: true));
+      storage.writePending = Completer<void>();
+      storage.writeStarted = Completer<void>();
+      final gate = storage.writePending!;
+      final refresh = session.accessToken();
+      final rejected = expectLater(refresh, throwsA(isA<AuthFailure>()));
+      await storage.writeStarted!.future;
+      final accepted = session.accept(credentials('new'));
+      gate.complete();
+      await accepted;
+      await rejected;
+      expect(storage.token, 'refresh-new');
+      expect(container.read(sessionProvider).value?.accessToken, 'access-new');
+    },
+  );
+  test(
+    'audit: interrupted access refresh can retry after network recovery',
+    () async {
+      await container.read(sessionProvider.future);
+      final session = container.read(sessionProvider.notifier);
+      await session.accept(credentials('old', expired: true));
+      repo.error = const AuthFailure('NETWORK_ERROR', 'Offline');
+      await expectLater(session.accessToken(), throwsA(isA<AuthFailure>()));
+      expect(storage.token, 'refresh-old');
+      repo.error = null;
+      expect(await session.accessToken(), 'access-rotated');
+      expect(repo.refreshes, 2);
+    },
+  );
+  test(
+    'audit: invalid-session cleanup cannot erase a newer accepted session',
+    () async {
+      await container.read(sessionProvider.future);
+      final session = container.read(sessionProvider.notifier);
+      await session.accept(credentials('old', expired: true));
+      storage.clearPending = Completer<void>();
+      storage.clearStarted = Completer<void>();
+      final gate = storage.clearPending!;
+      repo.error = const AuthFailure('SESSION_INVALID', 'Expired');
+      final request = session.accessToken();
+      final rejected = expectLater(request, throwsA(isA<AuthFailure>()));
+      await storage.clearStarted!.future;
+      final accepted = session.accept(credentials('new'));
+      gate.complete();
+      await accepted;
+      await rejected;
+      expect(storage.token, 'refresh-new');
+      expect(container.read(sessionProvider).value?.accessToken, 'access-new');
+    },
+  );
 }

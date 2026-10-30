@@ -22,6 +22,22 @@ final sessionProvider =
 class SessionController extends AsyncNotifier<SessionCredentials?> {
   Future<SessionCredentials>? _refreshing;
   int _generation = 0;
+  Future<void> _storageTail = Future.value();
+  Future<T> _withStorage<T>(Future<T> Function() operation) {
+    final result = _storageTail.then((_) => operation());
+    _storageTail = result.then<void>(
+      (_) {},
+      onError: (Object _, StackTrace _) {},
+    );
+    return result;
+  }
+
+  Future<void> _revokeQuietly(String token) async {
+    try {
+      await ref.read(sessionRepositoryProvider).logout(token);
+    } catch (_) {}
+  }
+
   Timer? _deadline;
   void _scheduleExpiry(SessionCredentials credentials) {
     _deadline?.cancel();
@@ -32,7 +48,8 @@ class SessionController extends AsyncNotifier<SessionCredentials?> {
       _generation++;
       state = const AsyncData(null);
       unawaited(
-        ref.read(sessionStorageProvider).clear().catchError((Object _) {}),
+        _withStorage(() => ref.read(sessionStorageProvider).clear())
+            .catchError((Object _) {}),
       );
     });
   }
@@ -40,62 +57,69 @@ class SessionController extends AsyncNotifier<SessionCredentials?> {
   @override
   Future<SessionCredentials?> build() async {
     ref.onDispose(() => _deadline?.cancel());
+    final generation = _generation;
     final stored = await ref.read(sessionStorageProvider).read();
+    if (generation != _generation) return state.value;
     if (stored == null) return null;
     try {
-      return await _rotate(stored);
+      return await _rotate(stored, generation);
     } on AuthFailure catch (e) {
+      if (generation != _generation) return state.value;
       if (e.code == 'SESSION_INVALID') {
-        await ref.read(sessionStorageProvider).clear();
+        await _withStorage(() => ref.read(sessionStorageProvider).clear());
         return null;
       }
       rethrow;
     }
   }
 
-  Future<SessionCredentials> _rotate(String token) async {
-    final generation = _generation;
+  Future<SessionCredentials> _rotate(String token, int generation) async {
     final next = await ref.read(sessionRepositoryProvider).refresh(token);
     if (generation != _generation) {
-      try {
-        await ref.read(sessionRepositoryProvider).logout(next.refreshToken);
-      } catch (_) {}
+      await _revokeQuietly(next.refreshToken);
       throw const AuthFailure('SESSION_INVALID', 'Please sign in again.');
     }
-    await _persist(next);
-    if (generation != _generation) {
-      await ref.read(sessionStorageProvider).clear();
-      throw const AuthFailure('SESSION_INVALID', 'Please sign in again.');
-    }
+    await _persist(next, generation);
     _scheduleExpiry(next);
     return next;
   }
 
-  Future<void> _persist(SessionCredentials next) async {
+  Future<void> _persist(SessionCredentials next, int generation) async {
     try {
-      await ref.read(sessionStorageProvider).write(next.refreshToken);
+      await _withStorage(() async {
+        if (generation != _generation) {
+          throw const AuthFailure('SESSION_INVALID', 'Please sign in again.');
+        }
+        final storage = ref.read(sessionStorageProvider);
+        try {
+          await storage.write(next.refreshToken);
+        } catch (_) {
+          try {
+            await storage.clear();
+          } catch (_) {}
+          throw const AuthFailure(
+            'STORAGE_ERROR',
+            'Your session could not be saved securely. Please sign in again.',
+          );
+        }
+        if (generation != _generation) {
+          // Still inside the write queue: never erase a newer session's write.
+          try {
+            await storage.clear();
+          } catch (_) {}
+          throw const AuthFailure('SESSION_INVALID', 'Please sign in again.');
+        }
+      });
     } catch (_) {
-      try {
-        await ref.read(sessionRepositoryProvider).logout(next.refreshToken);
-      } catch (_) {
-        /* Fail closed even if revocation is unreachable. */
-      }
-      await ref.read(sessionStorageProvider).clear();
-      throw const AuthFailure(
-        'STORAGE_ERROR',
-        'Your session could not be saved securely. Please sign in again.',
-      );
+      await _revokeQuietly(next.refreshToken);
+      rethrow;
     }
   }
 
   Future<void> accept(SessionCredentials next) async {
+    _deadline?.cancel();
     final generation = ++_generation;
-    await _persist(next);
-    if (generation != _generation) {
-      await ref.read(sessionStorageProvider).clear();
-      await ref.read(sessionRepositoryProvider).logout(next.refreshToken);
-      return;
-    }
+    await _persist(next, generation);
     _scheduleExpiry(next);
     state = AsyncData(next);
     ref.read(pendingMfaProvider.notifier).clear();
@@ -114,7 +138,10 @@ class SessionController extends AsyncNotifier<SessionCredentials?> {
       return current.accessToken;
     }
     try {
-      final operation = _refreshing ??= _rotate(current.refreshToken);
+      final operation = _refreshing ??= _rotate(
+        current.refreshToken,
+        generation,
+      );
       final next = await operation;
       if (ref.mounted && state.value == current) state = AsyncData(next);
       return next.accessToken;
@@ -122,8 +149,17 @@ class SessionController extends AsyncNotifier<SessionCredentials?> {
       if (e.code == 'SESSION_INVALID' &&
           generation == _generation &&
           state.value == current) {
-        await ref.read(sessionStorageProvider).clear();
+        final invalidGeneration = ++_generation;
+        _deadline?.cancel();
         state = const AsyncData(null);
+        await _withStorage(() async {
+          if (invalidGeneration != _generation) return;
+          try {
+            await ref.read(sessionStorageProvider).clear();
+          } catch (_) {
+            // The server rejected this credential; keep local UI signed out.
+          }
+        });
       }
       rethrow;
     } finally {
@@ -134,19 +170,31 @@ class SessionController extends AsyncNotifier<SessionCredentials?> {
   Future<bool> logout() async {
     _deadline?.cancel();
     _generation++;
-    final token =
-        state.value?.refreshToken ??
-        await ref.read(sessionStorageProvider).read();
+    var token = state.value?.refreshToken;
     state = const AsyncData(null);
-    await ref.read(sessionStorageProvider).clear();
     ref.read(pendingMfaProvider.notifier).clear();
-    if (token == null) return true;
+    final storage = ref.read(sessionStorageProvider);
+    final repository = ref.read(sessionRepositoryProvider);
+    var confirmed = true;
     try {
-      await ref.read(sessionRepositoryProvider).logout(token);
-      return true;
+      token ??= await storage.read();
     } catch (_) {
-      return false;
+      confirmed = false;
     }
+    // Revocation must be attempted even when secure-storage deletion fails.
+    try {
+      await _withStorage(storage.clear);
+    } catch (_) {
+      confirmed = false;
+    }
+    if (token != null) {
+      try {
+        await repository.logout(token);
+      } catch (_) {
+        confirmed = false;
+      }
+    }
+    return confirmed;
   }
 
   Future<Map<String, dynamic>> authorizedGet(String path) async {

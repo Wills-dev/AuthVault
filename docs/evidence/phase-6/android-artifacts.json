@@ -1,0 +1,16 @@
+{
+  "releaseSha256": "2a501269047d72f07a1adbcc3c077e05a4d38214f7fc0c8772c04766e96d5a8d",
+  "releaseBytes": 52780174,
+  "manifestAttributes": {
+    "allowBackup": "A: android:allowBackup(0x01010280)=(type 0x12)0x0",
+    "fullBackupContent": "A: android:fullBackupContent(0x010104eb)=(type 0x12)0x0",
+    "usesCleartextTraffic": "A: android:usesCleartextTraffic(0x010104ec)=(type 0x12)0x0",
+    "debuggable": null
+  },
+  "releaseDebuggableDefault": false,
+  "debugNetworkPolicyPresent": false,
+  "extractionRulesPresent": true,
+  "apksignerExitCode": 1,
+  "unsignedExpected": true,
+  "productionDistributionReady": false
+}

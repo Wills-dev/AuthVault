@@ -78,7 +78,7 @@ class AccountPage extends ConsumerWidget {
               messenger.showSnackBar(
                 const SnackBar(
                   content: Text(
-                    'Signed out locally. Server revocation could not be confirmed.',
+                    'Local access ended. Credential cleanup or server revocation could not be confirmed.',
                   ),
                 ),
               );

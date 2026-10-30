@@ -79,3 +79,11 @@ pages, labels and navigation. They do not change session state or bypass API gua
 Release/profile builds omit preview routes. The router remains stable while a
 Riverpod session listener refreshes redirect decisions; it is not recreated on each
 state change. App restart discards unfinished MFA and typed codes.
+
+
+## Phase 6 lifecycle hardening
+
+Logout ends local access immediately before awaited storage/network work. Cleanup or
+server-revocation failure is explicitly reported. Delayed restoration and stale
+invalid-session cleanup cannot overwrite a newer session. Backend authorization
+remains mandatory regardless of client state or debug route visibility.

@@ -1,0 +1,26 @@
+{
+  "executedOn": "2026-10-30",
+  "target": "emulator-5554",
+  "sensorInput": "manual user-triggered enrolled virtual fingerprint",
+  "renderer": "Skia software rendering; --no-enable-impeller --enable-software-rendering",
+  "testScenarioDurationSeconds": 29,
+  "command": "AUTHVAULT_TEST_FINGERPRINT_ID=manual flutter drive --dart-define=MANUAL_BIOMETRIC_TEST=true --no-enable-impeller --enable-software-rendering --driver=test_driver/phase_6_mfa_driver.dart --target=integration_test/full_mfa_test.dart -d emulator-5554",
+  "nativeEnrolment": "passed",
+  "serverVerifiedLogin": "PENDING_OTP",
+  "dashboard": "authenticated identity retrieved, then denied after logout",
+  "subjectId": "24669c72-385f-4df7-9ca2-c179e28726dd",
+  "credentialId": "61de4e5b-f20c-43ef-b59b-507cc87c68a0",
+  "hardwareBackedReported": false,
+  "physicalHardwareSecurity": "not established by emulator",
+  "otp": "SMTP accepted; mailbox code verified; wrong code rejected",
+  "restoration": "fresh provider container rotated securely stored refresh token",
+  "logout": "passed",
+  "normalEntrypoint": {
+    "debugBuildPassed": true,
+    "buildSeconds": 11.9,
+    "launchExitCode": 0,
+    "focusedActivity": "com.example.authvault/.MainActivity",
+    "visuallyInspected": "signed-out login with empty fields",
+    "renderer": "Skia software rendering"
+  }
+}

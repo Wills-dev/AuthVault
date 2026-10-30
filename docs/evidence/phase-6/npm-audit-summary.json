@@ -1,0 +1,29 @@
+{
+  "allDependencies": {
+    "info": 0,
+    "low": 6,
+    "moderate": 0,
+    "high": 0,
+    "critical": 0,
+    "total": 6
+  },
+  "runtime": {
+    "info": 0,
+    "low": 0,
+    "moderate": 0,
+    "high": 0,
+    "critical": 0,
+    "total": 0
+  },
+  "advisory": "https://github.com/advisories/GHSA-gcqx-w48m-w2h4",
+  "affectedPackages": [
+    "@jest/core",
+    "deepmerge",
+    "jest",
+    "jest-cli",
+    "jest-config",
+    "ts-jest"
+  ],
+  "nonbreakingPatchedDeepmergeVersionAvailable": false,
+  "automaticBreakingDowngradeApplied": false
+}

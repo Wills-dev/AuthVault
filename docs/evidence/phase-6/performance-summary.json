@@ -1,0 +1,51 @@
+{
+  "preOtpFlowMs": {
+    "n": 5,
+    "min": 268.56,
+    "median": 270.94,
+    "max": 278.44,
+    "p95NearestRank": 278.44
+  },
+  "smtpIssueMs": {
+    "n": 5,
+    "min": 110.11,
+    "median": 111.01,
+    "max": 111.3,
+    "p95NearestRank": 111.3
+  },
+  "otpVerifyMs": {
+    "n": 5,
+    "min": 8.48,
+    "median": 8.86,
+    "max": 9.85,
+    "p95NearestRank": 9.85
+  },
+  "completeMfaMs": {
+    "n": 5,
+    "min": 388.09,
+    "median": 390.9,
+    "max": 399.59,
+    "p95NearestRank": 399.59
+  },
+  "accountMs": {
+    "n": 5,
+    "min": 2.34,
+    "median": 2.65,
+    "max": 2.97,
+    "p95NearestRank": 2.97
+  },
+  "refreshMs": {
+    "n": 5,
+    "min": 5.2,
+    "median": 5.34,
+    "max": 6.09,
+    "p95NearestRank": 6.09
+  },
+  "logoutMs": {
+    "n": 5,
+    "min": 3.6,
+    "median": 4.04,
+    "max": 4.56,
+    "p95NearestRank": 4.56
+  }
+}

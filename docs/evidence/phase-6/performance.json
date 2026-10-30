@@ -1,0 +1,78 @@
+{
+  "measuredAt": "2026-10-30T10:08:55.009Z",
+  "node": "v24.22.1",
+  "platform": "darwin",
+  "scope": "in-process NestJS with loopback HTTP/Supertest, real isolated PostgreSQL and loopback SMTP; software EC fixtures, no human or native biometric latency",
+  "softwareKeyPathAccepted": true,
+  "samples": [
+    {
+      "preOtpFlowMs": 270.94004099999984,
+      "smtpIssueMs": 111.01033400000051,
+      "otpVerifyMs": 8.951999999999316,
+      "completeMfaMs": 390.90237499999967,
+      "accountMs": 2.7105000000010477,
+      "refreshMs": 6.090415999999095,
+      "logoutMs": 4.556792000001224
+    },
+    {
+      "preOtpFlowMs": 268.55883299999914,
+      "smtpIssueMs": 110.67016700000022,
+      "otpVerifyMs": 8.860500000000684,
+      "completeMfaMs": 388.08950000000004,
+      "accountMs": 2.6461249999993015,
+      "refreshMs": 5.199957999999242,
+      "logoutMs": 3.5962500000005093
+    },
+    {
+      "preOtpFlowMs": 273.150916999999,
+      "smtpIssueMs": 111.2582910000001,
+      "otpVerifyMs": 8.825834000001123,
+      "completeMfaMs": 393.23504200000025,
+      "accountMs": 2.342332999998689,
+      "refreshMs": 5.203500000001441,
+      "logoutMs": 4.044499999999971
+    },
+    {
+      "preOtpFlowMs": 278.4433749999989,
+      "smtpIssueMs": 111.29874999999993,
+      "otpVerifyMs": 9.847792000000481,
+      "completeMfaMs": 399.58991699999933,
+      "accountMs": 2.9680000000007567,
+      "refreshMs": 5.608457999998791,
+      "logoutMs": 4.433708000000479
+    },
+    {
+      "preOtpFlowMs": 270.2323329999999,
+      "smtpIssueMs": 110.10520899999938,
+      "otpVerifyMs": 8.481374999999389,
+      "completeMfaMs": 388.8189169999987,
+      "accountMs": 2.629541000000245,
+      "refreshMs": 5.3411250000008295,
+      "logoutMs": 3.8347499999999854
+    }
+  ],
+  "rssBeforeBytes": 423657472,
+  "rssAfterBytes": 409272320,
+  "cpuUserUs": 1405631,
+  "cpuSystemUs": 62127,
+  "sessionLookupPlan": [
+    {
+      "QUERY PLAN": [
+        {
+          "Plan": {
+            "Node Type": "Seq Scan",
+            "Parallel Aware": false,
+            "Async Capable": false,
+            "Relation Name": "AuthSession",
+            "Alias": "AuthSession",
+            "Startup Cost": 0,
+            "Total Cost": 1.88,
+            "Plan Rows": 1,
+            "Plan Width": 16,
+            "Filter": "(id = '903c49d8-ba46-4cdc-a5cc-7178af51390b'::uuid)"
+          }
+        }
+      ]
+    }
+  ]
+}

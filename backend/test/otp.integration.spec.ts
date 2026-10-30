@@ -1,3 +1,5 @@
+import { mkdirSync, writeFileSync } from "node:fs";
+import { performance } from "node:perf_hooks";
 import { SignJWT, decodeJwt } from "jose";
 import "reflect-metadata";
 import {
@@ -412,5 +414,117 @@ describe("OTP SMTP and complete sessions with real PostgreSQL", () => {
     const capped = await send(a).expect(429);
     expect(capped.body.error.code).toBe("OTP_SEND_LIMIT");
     expect(mail).toHaveLength(3);
+  });
+  it("phase 6: account resources ignore cross-user selectors and reject mismatched JWT subject", async () => {
+    const { a, tokens } = await complete(),
+      other = await pending();
+    const own = await api()
+      .get(`/v1/users/me?userId=${other.subjectId}`)
+      .set("Authorization", `Bearer ${tokens.accessToken}`)
+      .expect(200);
+    expect(own.body.id).toBe(a.subjectId);
+    expect(own.body.passwordHash).toBeUndefined();
+    const forged = await new SignJWT({
+      ...decodeJwt(tokens.accessToken),
+      sub: other.subjectId,
+    })
+      .setProtectedHeader({ alg: "HS256", typ: "at+jwt" })
+      .sign(Buffer.from(process.env.ACCESS_JWT_KEY!, "hex"));
+    await api()
+      .get("/v1/users/me")
+      .set("Authorization", `Bearer ${forged}`)
+      .expect(401);
+  });
+  it("phase 6: credential revocation invalidates both completed access and refresh", async () => {
+    const { a, tokens } = await complete();
+    const attempt = await db.authAttempt.findUniqueOrThrow({
+      where: { id: a.attemptId },
+    });
+    await db.biometricCredential.update({
+      where: { id: attempt.verifiedCredentialId! },
+      data: { revokedAt: new Date() },
+    });
+    await api()
+      .get("/v1/users/me")
+      .set("Authorization", `Bearer ${tokens.accessToken}`)
+      .expect(401);
+    await api()
+      .post("/v1/auth/refresh")
+      .send({ refreshToken: tokens.refreshToken })
+      .expect(401);
+    expect(
+      (
+        await db.authSession.findUniqueOrThrow({
+          where: { attemptId: a.attemptId },
+        })
+      ).revokedAt,
+    ).not.toBeNull();
+  });
+  it("phase 6: measures local server flow using explicitly exportable test keys and actual SMTP", async () => {
+    const samples: Record<string, number>[] = [];
+    const rssBefore = process.memoryUsage().rss,
+      cpuBefore = process.cpuUsage();
+    for (let i = 0; i < 5; i++) {
+      // This isolated test DB reset is outside measurement, not a production limiter bypass.
+      await db.rateLimit.deleteMany();
+      const started = performance.now(),
+        a = await pending(),
+        ready = performance.now();
+      const c = (await send(a).expect(200)).body as Issued,
+        sent = performance.now();
+      const tokens = (await verify(a, c, code()).expect(200)).body as Tokens,
+        verified = performance.now();
+      await api()
+        .get("/v1/users/me")
+        .set("Authorization", `Bearer ${tokens.accessToken}`)
+        .expect(200);
+      const account = performance.now();
+      const rotated = (
+          await api()
+            .post("/v1/auth/refresh")
+            .send({ refreshToken: tokens.refreshToken })
+            .expect(200)
+        ).body as Tokens,
+        refreshed = performance.now();
+      await api()
+        .post("/v1/auth/logout")
+        .send({ refreshToken: rotated.refreshToken })
+        .expect(204);
+      samples.push({
+        preOtpFlowMs: ready - started,
+        smtpIssueMs: sent - ready,
+        otpVerifyMs: verified - sent,
+        completeMfaMs: verified - started,
+        accountMs: account - verified,
+        refreshMs: refreshed - account,
+        logoutMs: performance.now() - refreshed,
+      });
+    }
+    const cpu = process.cpuUsage(cpuBefore);
+    const plans =
+      await db.$queryRaw`EXPLAIN (FORMAT JSON) SELECT id FROM "AuthSession" WHERE id = ${randomUUID()}::uuid`;
+    mkdirSync(".test-results", { recursive: true });
+    writeFileSync(
+      ".test-results/phase-6-performance.json",
+      JSON.stringify(
+        {
+          measuredAt: new Date().toISOString(),
+          node: process.version,
+          platform: process.platform,
+          scope:
+            "in-process NestJS with loopback HTTP/Supertest, real isolated PostgreSQL and loopback SMTP; software EC fixtures, no human or native biometric latency",
+          softwareKeyPathAccepted: true,
+          samples,
+          rssBeforeBytes: rssBefore,
+          rssAfterBytes: process.memoryUsage().rss,
+          cpuUserUs: cpu.user,
+          cpuSystemUs: cpu.system,
+          sessionLookupPlan: plans,
+        },
+        null,
+        2,
+      ),
+    );
+    expect(samples).toHaveLength(5);
   });
 });

@@ -10,4 +10,7 @@ module.exports = {
   moduleNameMapper: { "^(\\.{1,2}/.*)\\.js$": "$1" },
   testMatch: ["**/test/**/*.spec.ts"],
   testTimeout: 30000,
+  coverageProvider: "v8",
+  collectCoverageFrom: ["src/**/*.ts", "!src/generated/**", "!src/main.ts"],
+  coverageReporters: ["json-summary", "lcov", "text-summary"],
 };

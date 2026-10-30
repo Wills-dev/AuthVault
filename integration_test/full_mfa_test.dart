@@ -4,6 +4,7 @@ import 'package:dio/dio.dart';
 import 'package:authvault/features/auth/presentation/providers/session_providers.dart';
 
 import 'package:authvault/app/app.dart';
+import 'package:authvault/core/widgets/VaultComponents/VaultComponents.dart';
 import 'package:authvault/app/router/app_router.dart';
 import 'package:authvault/core/security/native_biometric_keys.dart';
 import 'package:authvault/features/auth/domain/entities/pending_attempt.dart';
@@ -14,10 +15,25 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 
-Future<void> waitFor(WidgetTester tester, Finder finder) async {
-  final deadline = DateTime.now().add(const Duration(seconds: 60));
+const biometricTestWait = Duration(
+  seconds: bool.fromEnvironment('MANUAL_BIOMETRIC_TEST') ? 110 : 60,
+);
+
+Future<void> waitFor(
+  WidgetTester tester,
+  Finder finder, {
+  Duration timeout = const Duration(seconds: 60),
+}) async {
+  final deadline = DateTime.now().add(timeout);
   while (finder.evaluate().isEmpty && DateTime.now().isBefore(deadline)) {
     await tester.pump(const Duration(milliseconds: 200));
+  }
+  if (finder.evaluate().isEmpty) {
+    final feedback = tester
+        .widgetList<VaultNotice>(find.byType(VaultNotice))
+        .map((notice) => notice.message)
+        .join(' | ');
+    fail('Expected screen was unavailable. Safe UI feedback: $feedback');
   }
   expect(finder, findsOneWidget);
   await tester.pumpAndSettle();
@@ -69,7 +85,11 @@ void main() {
     await waitFor(tester, find.textContaining('Account created.'));
     expect(container.read(pendingMfaProvider)?.stage, PendingStage.enrolment);
     await tap(tester, 'Enrol device biometrics');
-    await waitFor(tester, find.text('Return to login'));
+    await waitFor(
+      tester,
+      find.text('Return to login'),
+      timeout: biometricTestWait,
+    );
     expect(container.read(pendingMfaProvider)?.stage, PendingStage.enrolled);
     final subject = container.read(pendingMfaProvider)!.subjectId!;
     final metadata = await const AndroidBiometricKeys().credential(
@@ -83,7 +103,11 @@ void main() {
     await tap(tester, 'Continue securely');
     await waitFor(tester, find.textContaining('Password confirmed.'));
     await tap(tester, 'Verify with biometrics');
-    await waitFor(tester, find.text('One final checkpoint'));
+    await waitFor(
+      tester,
+      find.text('One final checkpoint'),
+      timeout: biometricTestWait,
+    );
     expect(container.read(pendingMfaProvider)?.stage, PendingStage.otp);
     router.go('/dashboard');
     await tester.pumpAndSettle();

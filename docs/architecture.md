@@ -145,3 +145,15 @@ form state, and GoRouter observes the session without reconstructing the router.
 Only refresh credentials persist in secure storage. Debug previews are separate
 screens and cannot authorize backend calls. Full sequence and tradeoffs:
 [Phase 5 implementation](phase-5-implementation.md).
+
+
+## Phase 6 audit hardening
+
+Session restoration captures a lifecycle generation before the first storage read.
+Logout removes local access before awaiting I/O, attempts remote revocation even if
+secure-store deletion fails, and reports uncertainty. All refresh persistence and
+stale cleanup share a queue so older work cannot erase newer credentials. Backend
+stage/ownership/transaction architecture is unchanged. Android backup exclusions are
+explicit; release signing has no debug fallback and missing owned credentials yield
+an unsigned audit APK. The server's lack of key attestation remains a High assurance
+gap, documented in the [audit](phase-6-security-audit.md).
