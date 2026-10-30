@@ -79,7 +79,7 @@ void main() {
       await tap(tester, 'Verify with biometrics');
       await waitFor(tester, find.text('One final checkpoint'));
       expect(container.read(pendingMfaProvider)?.stage, PendingStage.otp);
-      expect(find.textContaining('Device proof verified.'), findsOneWidget);
+      expect(find.textContaining('No code has been sent'), findsOneWidget);
       router.go('/dashboard');
       await tester.pumpAndSettle();
       expect(router.routeInformationProvider.value.uri.path, '/login');
@@ -94,7 +94,7 @@ void main() {
         'credentialId': metadata.id,
         'hardwareBackedReported': metadata.hardwareBackedReported,
         'physicalHardwareSecurity': 'not established by emulator',
-        'otp': 'not implemented',
+        'otp': 'not requested in this biometric-only test',
       };
     },
   );

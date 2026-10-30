@@ -1,7 +1,7 @@
-# AuthVault backend — Phase 4
+# AuthVault backend — Phase 5
 
-NestJS 12.3.2, strict TypeScript, PostgreSQL and Prisma 7.10.1. The only authentication
-result is an expiring pending-MFA credential. No access or refresh tokens are issued.
+NestJS 12.3.2, strict TypeScript, PostgreSQL and Prisma 7.10.1. Password and biometric stages return expiring pending credentials. Email OTP completes
+MFA and issues a five-minute JWT and rotating seven-day session refresh credential.
 
 ## Prerequisites
 
@@ -93,7 +93,7 @@ the one-time delivery of the newly created opaque attempt credential.
 See [API contract](../docs/api-contract.md), [Phase 3 notes](../docs/phase-3-implementation.md)
 and [validation](../docs/phase-3-validation.md). Remote deployment requires TLS
 termination, a restricted database role/connection, secret management and retention
-policies. Phase 5 is not implemented and requires approval.
+policies. Phase 6 has not started.
 
 
 Phase 4 adds BiometricModule and migration 202610300002_biometric_challenges.
@@ -103,8 +103,57 @@ expiry, cross-user, stage, replay, revocation and concurrency tests. Test softwa
 keys validate the server protocol only and are not native biometric evidence.
 
 Registration/login/status include subjectId for native credential lookup.
-Enrolment ends at ENROLMENT_COMPLETE; login proof ends at PENDING_OTP. No access
-or refresh tokens are issued and all protected account endpoints still reject.
+Enrolment ends at ENROLMENT_COMPLETE; login proof ends at PENDING_OTP. OTP completion is now required before protected account endpoints accept access credentials.
 See ../docs/biometric-security-design.md for the explicit lack of server attestation,
-admin-only revocation policy and recovery/physical-device limitations. Phase 5
-has not started.
+admin-only revocation policy and recovery/physical-device limitations. See the Phase 5 notes below.
+
+
+## Phase 5 setup and delivery
+
+Existing development installations: run `node scripts/configure-local-auth.mjs` once
+before restarting. Fresh `npm run db:local` creates the Phase 5 settings too.
+Existing values are preserved. Generate each authentication/HMAC key independently
+with 32 cryptographically random bytes encoded as hex; `.env.example` contains only
+placeholders. Production should inject secrets from a secret manager.
+
+```sh
+npm ci
+npm run generate
+npm run db:migrate
+npm run build
+# Terminal 1, local development only:
+node scripts/mailbox.mjs
+# Terminal 2:
+npm start
+```
+
+The bundled mailbox requires dev dependencies (`smtp-server`), binds SMTP 1025 and
+HTTP 8025 to loopback, retains at most 50 messages in RAM and exposes only messages
+from the last ten minutes. It never forwards mail or logs message contents. Stop it
+after testing. Do not expose it on a shared/public interface. The mobile production
+code never reads it; only integration test code uses `/messages`.
+
+Mailpit alternative (not executed on this Docker-less host):
+
+```sh
+docker compose -f compose.mailpit.yml up -d
+```
+
+Use one local mailbox at a time. Mailpit uses the same SMTP settings; inspect its UI
+at `http://127.0.0.1:8025`. Its API differs from the bundled mailbox, so the current
+Android E2E harness specifically requires `scripts/mailbox.mjs`.
+[Official Mailpit configuration](https://mailpit.axllent.org/docs/install/docker/).
+
+Production SMTP requires `SMTP_HOST`, `SMTP_PORT`, `SMTP_FROM`, `SMTP_USER` and
+`SMTP_PASSWORD`. Set `SMTP_SECURE=true` for implicit TLS (usually port 465), or
+false for STARTTLS (usually 587); production transport requires TLS and validates
+certificates. Local plaintext SMTP is for development only. Provider acceptance is
+reported as `SMTP_ACCEPTED`; this does not prove delivery to an external inbox.
+No external production email provider or DNS delivery configuration was validated.
+
+Apply additive migration `202610300003_otp_sessions`. Existing pending OTP attempts
+lack a verified credential binding and must restart login. OTP/session records contain
+only HMAC/hash verification material. See [API](../docs/api-contract.md),
+[implementation and sequence](../docs/phase-5-implementation.md) and
+[validation](../docs/phase-5-validation.md). No scheduled data-retention cleanup is
+implemented yet; deploy explicit retention policies before operating at scale.

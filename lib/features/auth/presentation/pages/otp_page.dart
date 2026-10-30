@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/widgets/VaultComponents/VaultComponents.dart';
 import '../../domain/input_validation.dart';
 import '../providers/auth_ui_providers.dart';
+import '../providers/session_providers.dart';
 import '../providers/credentials_providers.dart';
 import '../../domain/entities/pending_attempt.dart';
 
@@ -23,24 +25,32 @@ class _OtpPageState extends ConsumerState<OtpPage> {
     super.dispose();
   }
 
-  void verify() {
-    if (ref.read(otpSubmissionProvider).isLoading) return;
+  Future<void> verify() async {
+    if (ref.read(otpChallengeProvider).isLoading) return;
     if (form.currentState!.validate()) {
       FocusScope.of(context).unfocus();
-      ref.read(otpSubmissionProvider.notifier).submit();
+      if (await ref.read(otpChallengeProvider.notifier).verify(code.text)) {
+        if (mounted) code.clear();
+      }
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final state = ref.watch(otpSubmissionProvider);
+    ref.listen(pendingMfaProvider, (previous, next) {
+      if (previous?.id != next?.id) code.clear();
+    });
+    final state = ref.watch(otpChallengeProvider);
+    final sending = ref.read(otpChallengeProvider.notifier).sending;
     final failure = state.error;
-    final errorMessage = failure is AuthUiOtpFailure
-        ? (failure.reason == OtpFailure.expired
-              ? 'This code has expired. Request a new code.'
-              : 'That code is invalid. Check the six digits and try again.')
-        : 'This code could not be verified: no server verification is connected. Access has not been granted.';
-    final timing = ref.watch(otpTimingProvider);
+    final errorMessage = failure is AuthFailure
+        ? failure.message
+        : 'Verification is unavailable. Please try again.';
+    final challenge = ref.read(otpChallengeProvider.notifier).lastChallenge;
+    final timing = OtpTiming(
+      expiresAt: challenge?.expiresAt,
+      resendAt: challenge?.resendAt,
+    );
     final now = ref.watch(otpClockProvider).value ?? DateTime.now();
     final seconds = timing.resendSeconds(now);
     return VaultPage(
@@ -48,16 +58,18 @@ class _OtpPageState extends ConsumerState<OtpPage> {
       title: 'One final checkpoint',
       description: 'An email code will confirm access to your inbox. Codes will expire after five minutes and can only be used once.',
       children: [
-        if (ref.watch(pendingMfaProvider)?.stage == PendingStage.otp)
-          const Padding(
-            padding: EdgeInsets.only(bottom: 16),
-            child: VaultNotice(
-              'Device proof verified. Email verification is still required. No code has been sent.',
+        VaultNotice(
+          challenge == null
+              ? 'Request a code after device verification. No code has been sent from this screen.'
+              : 'The email provider accepted your code. Check your inbox. Delivery to your inbox can take a moment.',
+        ),
+        if (challenge != null && !timing.expired(now))
+          Padding(
+            padding: const EdgeInsets.only(top: 12),
+            child: Text(
+              'Code expires in ${challenge.expiresAt.difference(now).inSeconds.clamp(0, 300)}s',
             ),
           ),
-        const VaultNotice(
-          'No code has been sent. Email verification requires a backend MFA attempt; this screen currently explains the next step.',
-        ),
         const SizedBox(height: 24),
         Form(
           key: form,
@@ -99,21 +111,36 @@ class _OtpPageState extends ConsumerState<OtpPage> {
           ),
         VaultAction(
           label: 'Verify email code',
-          loading: state.isLoading,
+          loading: state.isLoading && !sending,
           onPressed: verify,
         ),
         const SizedBox(height: 12),
+        if (sending) const Center(child: CircularProgressIndicator()),
         TextButton(
-          onPressed: null,
+          onPressed:
+              seconds > 0 ||
+                  state.isLoading ||
+                  ref.watch(pendingMfaProvider)?.stage != PendingStage.otp
+              ? null
+              : () {
+                  code.clear();
+                  ref.read(otpChallengeProvider.notifier).send();
+                },
           child: Text(
             seconds > 0
                 ? 'Resend in ${seconds}s'
-                : 'Resend unavailable · No active attempt',
+                : challenge == null
+                ? 'Send email code'
+                : 'Resend email code',
           ),
         ),
-        const Text(
-          'Having trouble? You can return to login and start again when authentication is available.',
-          textAlign: TextAlign.center,
+        TextButton(
+          onPressed: () async {
+            code.clear();
+            await ref.read(pendingMfaProvider.notifier).abandon();
+            if (context.mounted) context.go('/login');
+          },
+          child: const Text('Start a new sign-in'),
         ),
       ],
     );

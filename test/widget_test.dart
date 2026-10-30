@@ -1,3 +1,7 @@
+import 'package:authvault/features/auth/presentation/providers/session_providers.dart';
+import 'package:authvault/features/auth/domain/entities/session_credentials.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+
 import 'dart:async';
 
 import 'package:authvault/app/app.dart';
@@ -10,6 +14,25 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+
+// Legacy fixture actions are test-only; shipping OTP always uses the repository.
+/// OTP remains unavailable until Phase 5; credential forms use credentials_providers.
+class AuthUiActions {
+  Future<void> submit() async {
+    throw const AuthUiUnavailable();
+  }
+}
+
+enum OtpFailure { invalid, expired }
+
+class AuthUiOtpFailure implements Exception {
+  const AuthUiOtpFailure(this.reason);
+  final OtpFailure reason;
+}
+
+class AuthUiUnavailable implements Exception {
+  const AuthUiUnavailable();
+}
 
 class PendingAction extends AuthUiActions {
   final completer = Completer<void>();
@@ -26,6 +49,40 @@ class FailedOtpAction extends AuthUiActions {
   final OtpFailure failure;
   @override
   Future<void> submit() async => throw AuthUiOtpFailure(failure);
+}
+
+class FixtureOtp extends OtpController {
+  FixtureOtp(this.action, this.timing);
+  final AuthUiActions? action;
+  final OtpTiming timing;
+  @override
+  OtpChallenge? build() {
+    if (timing.expiresAt != null) {
+      lastChallenge = OtpChallenge(
+        'fixture',
+        timing.expiresAt!,
+        timing.resendAt!,
+      );
+    }
+    return lastChallenge;
+  }
+
+  @override
+  Future<bool> verify(String code) async {
+    if (action is FailedOtpAction) {
+      final failure = (action as FailedOtpAction).failure;
+      state = AsyncError(
+        AuthFailure(
+          'OTP_ERROR',
+          failure == OtpFailure.expired
+              ? 'This code has expired. Request a new code.'
+              : 'That code is invalid. Check the six digits and try again.',
+        ),
+        StackTrace.current,
+      );
+    }
+    return false;
+  }
 }
 
 class OfflineRepository implements AuthRepository {
@@ -83,8 +140,7 @@ Future<ProviderContainer> open(
         (ref, scope) => OfflineRepository(action),
       ),
       biometricCapabilitiesProvider.overrideWithValue(ReadyDevice(readiness)),
-      if (action != null) authUiActionsProvider.overrideWithValue(action),
-      otpTimingProvider.overrideWithValue(timing),
+      otpChallengeProvider.overrideWith(() => FixtureOtp(action, timing)),
       otpClockProvider.overrideWith(
         (ref) => Stream.value(clock ?? DateTime.utc(2026, 10, 29, 12)),
       ),
@@ -110,6 +166,8 @@ Future<void> tapText(WidgetTester tester, String label) async {
 }
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+  setUp(() => FlutterSecureStorage.setMockInitialValues({}));
   test('OTP timing uses expiry boundaries and clamps countdown', () {
     final now = DateTime.utc(2026, 10, 29, 12);
     final timing = OtpTiming(
@@ -282,7 +340,7 @@ void main() {
       await tester.pump();
       expect(editable.widget.controller.text, '654321');
       await tapText(tester, 'Verify email code');
-      expect(find.textContaining('no server verification'), findsOneWidget);
+      expect(find.textContaining('No code has been sent'), findsOneWidget);
     },
   );
 

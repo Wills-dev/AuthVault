@@ -1,3 +1,5 @@
+import { SessionService } from "../session/session.service.js";
+import { RefreshDto } from "../session/session.dto.js";
 import {
   Body,
   Controller,
@@ -16,7 +18,16 @@ import { AuthRateLimitGuard } from "./rate-limit.service.js";
 @Controller("auth")
 @UseGuards(AuthRateLimitGuard)
 export class AuthController {
-  constructor(private readonly auth: AuthService) {}
+  constructor(
+    private readonly auth: AuthService,
+    private readonly sessions: SessionService,
+  ) {}
+  @Post("refresh") @HttpCode(200) refresh(@Body() input: RefreshDto) {
+    return this.sessions.refresh(input.refreshToken);
+  }
+  @Post("logout") @HttpCode(204) logout(@Body() input: RefreshDto) {
+    return this.sessions.logout(input.refreshToken);
+  }
   @Post("register") register(@Body() input: RegisterDto) {
     return this.auth.register(input);
   }

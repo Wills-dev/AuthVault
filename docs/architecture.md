@@ -27,7 +27,7 @@ lib/
     profile/           data, domain, presentation
   core/                errors, network, security, storage, utils as needed
 android/               Android biometric signing bridge in Phase 4
-ios/                   iOS biometric signing bridge in Phase 4
+ios/                   Platform scaffold; iOS signing remains unimplemented
 backend/               NestJS service introduced in Phase 3
   src/                 auth, users, biometric, otp, mail, logging, prisma
   prisma/              schema and committed migrations
@@ -68,8 +68,9 @@ Persist MFA stage changes and challenge/OTP consumption atomically. Concurrent
 replay requests must allow at most one success. Access JWTs are short lived and
 have explicit issuer/audience/algorithm checks. Opaque refresh tokens are hashed,
 rotated in a transaction, and grouped into a token family; reuse revokes the family.
-Logout revokes the family. Define access-token revocation behavior explicitly in
-Phase 6 rather than implying logout invalidates every stateless JWT immediately.
+Logout revokes the family and live database session. Phase 5 guards check the session
+on every protected request, so subsequent use of an unexpired JWT is also rejected.
+Already-authorized requests may finish. This is stateful revocation.
 
 ## Biometric trust boundary
 
@@ -132,3 +133,15 @@ MethodChannel adapter isolated from widgets. Domain interfaces remain pure Dart;
 Dio calls stay in data sources. Biometric UI state is coordinated with Riverpod and
 pending status reconciliation. Read biometric-security-design.md for exact byte
 encoding, locking, stage permissions, recovery and hardware trust limitations.
+
+## Phase 5 current authentication boundary
+
+OtpModule performs SMTP-backed keyed OTP issuance/verification under PostgreSQL
+locks. SessionModule issues short-lived JWTs and rotating opaque refresh credentials;
+its guard checks a live database session and biometric credential on each protected
+request. UsersModule exposes actual account/security data. Flutter session and OTP
+repositories contain Dio calls; Riverpod controllers own restoration/rotation and
+form state, and GoRouter observes the session without reconstructing the router.
+Only refresh credentials persist in secure storage. Debug previews are separate
+screens and cannot authorize backend calls. Full sequence and tradeoffs:
+[Phase 5 implementation](phase-5-implementation.md).

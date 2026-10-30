@@ -18,27 +18,29 @@ enum MfaStage {
 }
 
 model User {
-  id           String                @id @default(uuid()) @db.Uuid
-  email        String                @unique @db.VarChar(254)
-  fullName     String                @db.VarChar(100)
-  passwordHash String
-  createdAt    DateTime              @default(now())
-  attempts     AuthAttempt[]
-  credentials  BiometricCredential[]
-  sessions     AuthSession[]
-  events       AuditEvent[]
+  id             String                @id @default(uuid()) @db.Uuid
+  email          String                @unique @db.VarChar(254)
+  fullName       String                @db.VarChar(100)
+  otpLockedUntil DateTime?
+  passwordHash   String
+  createdAt      DateTime              @default(now())
+  attempts       AuthAttempt[]
+  credentials    BiometricCredential[]
+  sessions       AuthSession[]
+  events         AuditEvent[]
 }
 
 model AuthAttempt {
-  id                  String               @id @default(uuid()) @db.Uuid
-  userId              String               @db.Uuid
-  user                User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
-  tokenHash           String               @unique @db.Char(64)
-  stage               MfaStage
-  expiresAt           DateTime
-  createdAt           DateTime             @default(now())
-  otpChallenges       OtpChallenge[]
-  biometricChallenges BiometricChallenge[]
+  id                   String               @id @default(uuid()) @db.Uuid
+  userId               String               @db.Uuid
+  user                 User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash            String               @unique @db.Char(64)
+  stage                MfaStage
+  expiresAt            DateTime
+  createdAt            DateTime             @default(now())
+  verifiedCredentialId String?              @db.Uuid
+  otpChallenges        OtpChallenge[]
+  biometricChallenges  BiometricChallenge[]
 
   @@index([userId, createdAt])
   @@index([expiresAt])
@@ -58,22 +60,24 @@ model BiometricCredential {
   @@unique([userId, deviceId])
 }
 
-// Future persistence only. codeMac will hold keyed verification material.
+// HMAC only. Plaintext codes exist solely during SMTP submission.
 model OtpChallenge {
-  id         String      @id @default(uuid()) @db.Uuid
-  attemptId  String      @db.Uuid
-  attempt    AuthAttempt @relation(fields: [attemptId], references: [id], onDelete: Cascade)
-  codeMac    String      @db.Char(64)
-  expiresAt  DateTime
-  consumedAt DateTime?
-  failures   Int         @default(0)
-  createdAt  DateTime    @default(now())
+  id            String      @id @default(uuid()) @db.Uuid
+  attemptId     String      @db.Uuid
+  attempt       AuthAttempt @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+  codeMac       String      @db.Char(64)
+  expiresAt     DateTime
+  consumedAt    DateTime?
+  resendAt      DateTime    @default(now())
+  invalidatedAt DateTime?
+  failures      Int         @default(0)
+  createdAt     DateTime    @default(now())
 
   @@index([attemptId, createdAt])
   @@index([expiresAt])
 }
 
-// No session or refresh tokens are issued in Phase 3.
+// Live database authorization makes revocation effective for subsequent requests.
 model AuthSession {
   id            String         @id @default(uuid()) @db.Uuid
   userId        String         @db.Uuid
@@ -81,6 +85,8 @@ model AuthSession {
   createdAt     DateTime       @default(now())
   expiresAt     DateTime
   revokedAt     DateTime?
+  attemptId     String?        @unique @db.Uuid
+  credentialId  String?        @db.Uuid
   refreshTokens RefreshToken[]
 
   @@index([userId, revokedAt])

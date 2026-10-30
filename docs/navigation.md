@@ -57,3 +57,25 @@ Return to login; login proof success navigates to /otp with PENDING_OTP. Status
 reconciliation can expose Continue to email verification after an uncertain network
 response. No OTP is issued or verified. Protected routes and preview gates remain
 unchanged, regardless of biometric success.
+
+## Phase 5 update (current behavior)
+
+`/otp` uses the real OTP repository when an in-memory PENDING_OTP attempt exists.
+Send/resend requires confirmed biometric proof on the server. Code verification
+saves refresh credentials securely before creating local session state and routing
+to `/dashboard`. Wrong/expired/exhausted/network outcomes never create a session.
+`/dashboard` and `/profile` now render real backend account/security data only for
+a completed session. They redirect to login when signed out.
+
+`/restore` gates startup while saved credentials are rotated. Failed restoration
+keeps account routes gated and offers explicit retry/local sign-out. An invalid or
+expired saved credential is cleared. JWT expiry triggers serialized refresh when
+requesting account data; rejected refresh clears the session and redirects. Logout
+clears local storage and revokes the server session; offline revocation uncertainty
+is stated explicitly. A pending token or preview entry cannot unlock these routes.
+
+Debug `/preview`, `/preview/dashboard` and `/preview/profile` retain placeholder-only
+pages, labels and navigation. They do not change session state or bypass API guards.
+Release/profile builds omit preview routes. The router remains stable while a
+Riverpod session listener refreshes redirect decisions; it is not recreated on each
+state change. App restart discards unfinished MFA and typed codes.

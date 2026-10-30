@@ -162,8 +162,8 @@ describe("real PostgreSQL HTTP authentication", () => {
         .get(path)
         .set("Authorization", `Bearer ${login.body.attemptToken}`)
         .set("X-MFA-Token", login.body.attemptToken)
-        .expect(403);
-      expect(denied.body.error.code).toBe("MFA_REQUIRED");
+        .expect(401);
+      expect(denied.body.error.code).toBe("SESSION_INVALID");
     }
     const user = await prisma.user.findUniqueOrThrow({
       where: { email: dto.email },

@@ -1,3 +1,4 @@
+import { OtpModule } from "./otp/otp.module.js";
 import { Module } from "@nestjs/common";
 import { ConfigModule } from "@nestjs/config";
 import { validateEnvironment } from "./config/environment.js";
@@ -14,6 +15,7 @@ import { HealthModule } from "./health/health.module.js";
     AuthModule,
     BiometricModule,
     HealthModule,
+    OtpModule,
   ],
 })
 export class AppModule {}

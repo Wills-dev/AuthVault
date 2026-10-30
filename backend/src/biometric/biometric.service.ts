@@ -290,7 +290,10 @@ export class BiometricService {
             stage: attempt.stage,
             expiresAt: { gt: now },
           },
-          data: { stage },
+          data: {
+            stage,
+            ...(!enrolment ? { verifiedCredentialId: input.credentialId } : {}),
+          },
         });
         if (moved.count !== 1) throw rejected();
         await tx.auditEvent.create({

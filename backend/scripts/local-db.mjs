@@ -30,7 +30,7 @@ if (!existsSync(".env")) {
   const url = `postgresql://authvault:${password}@127.0.0.1:55432/authvault`;
   writeFileSync(
     ".env",
-    `NODE_ENV=development\nHOST=127.0.0.1\nPORT=3000\nDATABASE_URL=${url}\nTEST_DATABASE_URL=${url}_test\nAUDIT_HMAC_KEY=${randomBytes(32).toString("hex")}\nPENDING_TTL_SECONDS=600\n`,
+    `NODE_ENV=development\nHOST=127.0.0.1\nPORT=3000\nDATABASE_URL=${url}\nTEST_DATABASE_URL=${url}_test\nAUDIT_HMAC_KEY=${randomBytes(32).toString("hex")}\nPENDING_TTL_SECONDS=600\nOTP_HMAC_KEY=${randomBytes(32).toString("hex")}\nACCESS_JWT_KEY=${randomBytes(32).toString("hex")}\nSMTP_HOST=127.0.0.1\nSMTP_PORT=1025\nSMTP_FROM=security@authvault.local\nSMTP_SECURE=false\nOTP_RESEND_SECONDS=60\n`,
     { mode: 0o600 },
   );
 }

@@ -40,7 +40,7 @@ try {
   const protectedResponse = await fetch(`${base}/users/me`, {
     headers: { Authorization: `Bearer ${pending.attemptToken}` },
   });
-  assert.equal(protectedResponse.status, 403);
+  assert.equal(protectedResponse.status, 401);
   const wrong = await post("/auth/login", {
     email,
     password: randomBytes(24).toString("base64url"),
@@ -52,7 +52,7 @@ try {
   });
   assert.equal(revoke.status, 204);
   console.log(
-    "PASS: readiness 200, registration 201, login 200 pending only, status 200, protected resource 403, incorrect password 401, revocation 204.",
+    "PASS: readiness 200, registration 201, login 200 pending only, status 200, protected resource 401, incorrect password 401, revocation 204.",
   );
 } finally {
   const database = new pg.Client({

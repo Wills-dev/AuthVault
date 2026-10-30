@@ -1,0 +1,13 @@
+{
+  "executedOn": "2026-10-30",
+  "nativeEnrolment": "passed",
+  "serverVerifiedLogin": "PENDING_OTP",
+  "dashboard": "authenticated identity retrieved, then denied after logout",
+  "subjectId": "94b3bc9f-a7fc-4bb5-86d9-e11a8b5552b9",
+  "credentialId": "81314977-ae45-4731-aef6-e6e8fd0c3226",
+  "hardwareBackedReported": false,
+  "physicalHardwareSecurity": "not established by emulator",
+  "otp": "SMTP accepted; mailbox code verified; wrong code rejected",
+  "restoration": "fresh provider container rotated securely stored refresh token",
+  "logout": "passed"
+}

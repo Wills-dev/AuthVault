@@ -162,7 +162,7 @@ describe("biometric protocol with real PostgreSQL", () => {
       await request(app.getHttpServer())
         .get(path)
         .set("Authorization", `Bearer ${attempt.attemptToken}`)
-        .expect(403);
+        .expect(401);
     expect(
       await db.auditEvent.count({
         where: { userId: attempt.subjectId, kind: "BIOMETRIC_VERIFIED" },

@@ -1,4 +1,4 @@
-# API contract — Phase 4
+# API contract — Phase 5
 
 Base path `/v1`. JSON, UTC ISO-8601 timestamps, no cookies. Remote APIs require
 HTTPS. Local debug Android uses `http://10.0.2.2:3000/v1` only.
@@ -13,8 +13,8 @@ HTTPS. Local debug Android uses `http://10.0.2.2:3000/v1` only.
 | DELETE /auth/pending/:id | X-MFA-Token | 204: revoke pending attempt |
 | GET /health/live | none | 200: status ok |
 | GET /health/ready | none | 200: status ok, database reachable; queries PostgreSQL |
-| GET /users/me | no completed-session mechanism yet | Always 403 MFA_REQUIRED |
-| GET /users/me/security | no completed-session mechanism yet | Always 403 MFA_REQUIRED |
+| GET /users/me | completed-session Bearer JWT | 200 real account identity |
+| GET /users/me/security | completed-session Bearer JWT | 200 account security state |
 
 Registration and password-login responses contain `subjectId` (authorized account UUID), `attemptId` (UUID),
 `attemptToken` (32 cryptographically random bytes, base64url), `stage` and `expiresAt`.
@@ -46,7 +46,7 @@ password is incorrect.", "requestId": "server-generated UUID" } }`.
 | 400 | REGISTRATION_UNAVAILABLE | Account cannot be created; no email-specific detail |
 | 401 | INVALID_CREDENTIALS | Same message for unknown email and wrong password |
 | 401 | ATTEMPT_INVALID | Missing, invalid, revoked or expired attempt credential |
-| 403 | MFA_REQUIRED | Protected resources reject all incomplete-MFA credentials |
+| 401 | SESSION_INVALID | Invalid, expired, revoked or incomplete-MFA authorization |
 | 413 | PAYLOAD_TOO_LARGE | Request exceeds body limit |
 | 429 | RATE_LIMITED | Retry-After header states seconds to wait |
 | 503 | SERVICE_UNAVAILABLE | Database/service unavailable; fail closed |
@@ -93,10 +93,61 @@ stage, ownership, key status, purpose, expiry, replay and signature. Existing 40
 validation, 429 rate limiting and safe service-error envelopes remain. No credential
 lookup/replacement/recovery or password-only revocation endpoint is exposed.
 
-OTP, refresh and completed-session endpoints remain reserved/unimplemented.
+Biometric endpoints do not issue email codes or completed-session tokens; use the
+OTP and session endpoints below. There is no separate `/otp/resend` handler:
+resending uses `/otp/send` with the same authorization and cooldown checks.
 
-## Reserved — not implemented
+## Phase 5 — OTP and completed session contract (current)
 
-POST /otp/resend and POST /otp/verify belong to Phase 5. POST /auth/refresh and
-POST /auth/logout belong to Phase 6. They have no handlers and return not found.
-No email code or completed-session token is issued by the biometric endpoints.
+The Phase 3/4 pending-only restrictions above describe historical behavior.
+Protected resources now require a completed-session JWT; missing/invalid/pending
+Bearer credentials return **401 SESSION_INVALID**, never a successful account response.
+
+| Method/path | Input and authorization | Success |
+| --- | --- | --- |
+| POST `/otp/send` | `{attemptId: UUIDv4}`, `X-MFA-Token` | 200 `{challengeId, expiresAt, resendAt, delivery: "SMTP_ACCEPTED"}` |
+| POST `/otp/verify` | `{attemptId: UUIDv4, challengeId: UUIDv4, code: "six digits"}`, `X-MFA-Token` | 200 session credentials below |
+| POST `/auth/refresh` | `{refreshToken: "43-char base64url credential"}` | 200 rotated session credentials |
+| POST `/auth/logout` | `{refreshToken: "43-char base64url credential"}` | 204, including unknown credentials |
+| GET `/users/me` | `Authorization: Bearer <access JWT>` | 200 `{id, email, fullName, createdAt}` |
+| GET `/users/me/security` | same JWT authorization | 200 `{lastAuthentication: ISO timestamp or null, biometricCredentials: number, activeSessions: number, authenticationMethods: string[]}` |
+
+Session response: `{accessToken, refreshToken, accessExpiresAt, sessionExpiresAt}`.
+These are credentials: never log them. Access lifetime is five minutes, capped by
+the seven-day absolute session deadline. Refresh rotates on every use; consumed
+refresh reuse revokes its family. Retrying a lost response can therefore require
+new login. No cookies or client-supplied authenticated booleans are used.
+
+OTP request requires a valid PENDING_OTP attempt bound to a server-verified,
+non-revoked biometric credential. Only the SMTP-confirmed acceptance path creates
+or replaces the challenge. A wrong-stage request returns 403 OTP_UNAVAILABLE;
+missing/expired credentials or absent/revoked verified device binding return 401
+ATTEMPT_INVALID. Codes are never in API responses, including development mode.
+The client shows actual server timestamps; pending-attempt expiry may shorten the
+five-minute maximum. Resend defaults to sixty seconds; at most three accepted
+sends per attempt. The send endpoint also serves resends.
+
+| Status | Code | Client action |
+| --- | --- | --- |
+| 400 | OTP_INVALID | Check code; wrong digest consumes one of five guesses |
+| 400 | OTP_EXPIRED | Request replacement, subject to cooldown/attempt expiry |
+| 400 | OTP_EXHAUSTED | Fifth wrong guess; user locked fifteen minutes |
+| 429 | OTP_LOCKED | Wait until user lockout expires; new attempts cannot bypass |
+| 429 | OTP_COOLDOWN | Wait for the known `resendAt` deadline |
+| 429 | OTP_SEND_LIMIT | Start a new sign-in; accepted-send cap reached |
+| 429 | RATE_LIMITED | Apply endpoint/IP backoff; IP guard sets Retry-After |
+| 503 | EMAIL_UNAVAILABLE | Provider did not confirm acceptance; retry safely |
+| 401 | SESSION_INVALID | Rotate once or clear session and sign in again |
+
+Per-attempt OTP fixed-window quotas: six send requests and fifteen verify requests
+per ten minutes, charged only after valid pending-token context. All auth/OTP
+requests also share thirty/IP/minute. Consumed/invalidated/cross-attempt challenge
+IDs are rejected. Completed-attempt OTP replay returns ATTEMPT_INVALID. Malformed
+DTOs and unknown fields return 400 VALIDATION_ERROR.
+
+Protected endpoints verify signature, fixed issuer/audience/type/required claims,
+access expiry, live session ownership/expiry/revocation and active credential ownership.
+Logout/replay revokes the database session, so later requests using its unexpired
+JWT also fail. In-flight requests already authorized may finish. No endpoint accepts
+a pending credential as full authorization; `/preview/*` are client debug routes,
+not backend endpoints.

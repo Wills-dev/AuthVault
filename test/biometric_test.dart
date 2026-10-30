@@ -1,3 +1,5 @@
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+
 import 'dart:async';
 
 import 'package:authvault/app/app.dart';
@@ -142,6 +144,8 @@ Future<ProviderContainer> open(
 }
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+  setUp(() => FlutterSecureStorage.setMockInitialValues({}));
   testWidgets('server-confirmed enrolment enables login only', (tester) async {
     final keys = FixtureKeys();
     final repository = FixtureBiometricRepository();
@@ -171,7 +175,7 @@ void main() {
       await tester.pumpAndSettle();
       expect(keys.createRequested, isFalse);
       expect(container.read(pendingMfaProvider)?.stage, PendingStage.otp);
-      expect(find.textContaining('Device proof verified.'), findsOneWidget);
+      expect(find.textContaining('No code has been sent'), findsOneWidget);
       final router = container.read(appRouterProvider);
       router.go('/dashboard');
       await tester.pumpAndSettle();
