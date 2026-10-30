@@ -341,7 +341,7 @@ void main() {
       (tester) async {
         await open(tester, '/biometric', readiness: readiness);
         expect(
-          find.textContaining('Verification is not available yet'),
+          find.textContaining('No verification has occurred'),
           findsOneWidget,
         );
         expect(find.text('Check device again'), findsOneWidget);

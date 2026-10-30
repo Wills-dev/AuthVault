@@ -48,3 +48,12 @@ The pending-status endpoint confirms the attempt. Cancel clears/revokes the atte
 and returns to login. OTP remains informational/unavailable. Both normal protected
 routes still always redirect to login, including when password authentication has
 succeeded. Debug previews remain isolated and create no completed session.
+
+## Phase 4 update
+
+/biometric now exposes Enrol device biometrics only for PENDING_ENROLMENT and
+Verify with biometrics only for PENDING_BIOMETRIC. Enrolment confirmation offers
+Return to login; login proof success navigates to /otp with PENDING_OTP. Status
+reconciliation can expose Continue to email verification after an uncertain network
+response. No OTP is issued or verified. Protected routes and preview gates remain
+unchanged, regardless of biometric success.

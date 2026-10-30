@@ -94,6 +94,7 @@ describe("real PostgreSQL HTTP authentication", () => {
       "attemptToken",
       "expiresAt",
       "stage",
+      "subjectId",
     ]);
     expect(response.body.attemptToken).toMatch(/^[A-Za-z0-9_-]{43}$/);
     const user = await prisma.user.findUniqueOrThrow({

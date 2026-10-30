@@ -33,11 +33,12 @@ class PendingAttemptPanel extends ConsumerWidget {
                 ),
               ],
             ),
-            data: (current) => VaultNotice(
-              current?.stage == PendingStage.enrolment
-                  ? 'Account created. Biometric enrolment is required next. No authenticated session has been issued.'
-                  : 'Password confirmed. Biometric and email verification are still required. Your dashboard remains locked.',
-            ),
+            data: (current) => VaultNotice(switch (current?.stage) {
+              PendingStage.enrolment => 'Account created. Biometric enrolment is required next. No authenticated session has been issued.',
+              PendingStage.enrolled => 'Biometric key enrolled and confirmed by AuthVault. Return to login to begin multi-factor verification.',
+              PendingStage.otp => 'Device proof verified. Email verification is still required. No code has been sent.',
+              _ => 'Password confirmed. Biometric and email verification are still required. Your dashboard remains locked.',
+            }),
           ),
           TextButton(
             onPressed: () async {

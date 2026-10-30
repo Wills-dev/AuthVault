@@ -53,7 +53,14 @@ export class AuthRepository {
     return this.prisma.authAttempt.updateMany({
       where: {
         id,
-        stage: { in: [MfaStage.PENDING_ENROLMENT, MfaStage.PENDING_BIOMETRIC] },
+        stage: {
+          in: [
+            MfaStage.PENDING_ENROLMENT,
+            MfaStage.ENROLMENT_COMPLETE,
+            MfaStage.PENDING_BIOMETRIC,
+            MfaStage.PENDING_OTP,
+          ],
+        },
       },
       data: { stage: MfaStage.REVOKED },
     });

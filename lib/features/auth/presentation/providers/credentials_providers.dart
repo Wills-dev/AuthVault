@@ -146,7 +146,13 @@ final pendingStatusProvider = FutureProvider.autoDispose<PendingAttempt?>((
   try {
     final repository = ref.watch(credentialsRepositoryProvider('status'));
     ref.onDispose(repository.cancel);
-    return await repository.status(attempt);
+    final current = await repository.status(attempt);
+    if (current.stage != attempt.stage) {
+      Future.microtask(() {
+        if (ref.mounted) ref.read(pendingMfaProvider.notifier).set(current);
+      });
+    }
+    return current;
   } on AuthFailure catch (error) {
     if (error.code == 'ATTEMPT_INVALID') {
       Future.microtask(() {

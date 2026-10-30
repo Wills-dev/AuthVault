@@ -5,6 +5,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/widgets/VaultComponents/VaultComponents.dart';
 import '../../domain/input_validation.dart';
 import '../providers/auth_ui_providers.dart';
+import '../providers/credentials_providers.dart';
+import '../../domain/entities/pending_attempt.dart';
 
 class OtpPage extends ConsumerStatefulWidget {
   const OtpPage({super.key});
@@ -46,6 +48,13 @@ class _OtpPageState extends ConsumerState<OtpPage> {
       title: 'One final checkpoint',
       description: 'An email code will confirm access to your inbox. Codes will expire after five minutes and can only be used once.',
       children: [
+        if (ref.watch(pendingMfaProvider)?.stage == PendingStage.otp)
+          const Padding(
+            padding: EdgeInsets.only(bottom: 16),
+            child: VaultNotice(
+              'Device proof verified. Email verification is still required. No code has been sent.',
+            ),
+          ),
         const VaultNotice(
           'No code has been sent. Email verification requires a backend MFA attempt; this screen currently explains the next step.',
         ),

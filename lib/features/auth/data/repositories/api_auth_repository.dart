@@ -82,10 +82,13 @@ class ApiAuthRepository implements AuthRepository {
     final stage = switch (data['stage']) {
       'PENDING_ENROLMENT' => PendingStage.enrolment,
       'PENDING_BIOMETRIC' => PendingStage.biometric,
+      'ENROLMENT_COMPLETE' => PendingStage.enrolled,
+      'PENDING_OTP' => PendingStage.otp,
       _ => throw const FormatException(),
     };
     return PendingAttempt(
       id: id,
+      subjectId: data['subjectId'] as String?,
       token: secret,
       stage: stage,
       expiresAt: DateTime.parse(data['expiresAt'] as String).toUtc(),

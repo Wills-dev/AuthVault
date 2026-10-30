@@ -33,10 +33,11 @@ export class AuthService {
     };
   }
   private response(
-    attempt: { id: string; stage: string; expiresAt: Date },
+    attempt: { id: string; userId: string; stage: string; expiresAt: Date },
     token: string,
   ) {
     return {
+      subjectId: attempt.userId,
       attemptId: attempt.id,
       attemptToken: token,
       stage: attempt.stage,
@@ -84,7 +85,7 @@ export class AuthService {
     );
     return this.response(attempt, pending.token);
   }
-  async status(id: string, token: string | undefined) {
+  async context(id: string, token: string | undefined) {
     if (!token || !/^[A-Za-z0-9_-]{43}$/.test(token))
       throw this.invalidAttempt();
     const attempt = await this.auth.findAttempt(id);
@@ -94,10 +95,20 @@ export class AuthService {
       !timingSafeEqual(supplied, expected) ||
       !attempt ||
       attempt.expiresAt.getTime() <= Date.now() ||
-      !["PENDING_ENROLMENT", "PENDING_BIOMETRIC"].includes(attempt.stage)
+      ![
+        "PENDING_ENROLMENT",
+        "ENROLMENT_COMPLETE",
+        "PENDING_BIOMETRIC",
+        "PENDING_OTP",
+      ].includes(attempt.stage)
     )
       throw this.invalidAttempt();
+    return attempt;
+  }
+  async status(id: string, token: string | undefined) {
+    const attempt = await this.context(id, token);
     return {
+      subjectId: attempt.userId,
       attemptId: attempt.id,
       stage: attempt.stage,
       expiresAt: attempt.expiresAt.toISOString(),

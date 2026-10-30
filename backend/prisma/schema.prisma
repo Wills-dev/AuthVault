@@ -10,6 +10,7 @@ datasource db {
 
 enum MfaStage {
   PENDING_ENROLMENT
+  ENROLMENT_COMPLETE
   PENDING_BIOMETRIC
   PENDING_OTP
   COMPLETED
@@ -29,28 +30,30 @@ model User {
 }
 
 model AuthAttempt {
-  id            String         @id @default(uuid()) @db.Uuid
-  userId        String         @db.Uuid
-  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
-  tokenHash     String         @unique @db.Char(64)
-  stage         MfaStage
-  expiresAt     DateTime
-  createdAt     DateTime       @default(now())
-  otpChallenges OtpChallenge[]
+  id                  String               @id @default(uuid()) @db.Uuid
+  userId              String               @db.Uuid
+  user                User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash           String               @unique @db.Char(64)
+  stage               MfaStage
+  expiresAt           DateTime
+  createdAt           DateTime             @default(now())
+  otpChallenges       OtpChallenge[]
+  biometricChallenges BiometricChallenge[]
 
   @@index([userId, createdAt])
   @@index([expiresAt])
 }
 
-// Future persistence only: Phase 3 does not enrol keys or verify signatures.
+// Public credentials only; private key material never reaches this database.
 model BiometricCredential {
-  id        String    @id @default(uuid()) @db.Uuid
-  userId    String    @db.Uuid
-  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  deviceId  String    @db.VarChar(128)
-  publicKey String
-  createdAt DateTime  @default(now())
-  revokedAt DateTime?
+  id         String               @id @default(uuid()) @db.Uuid
+  userId     String               @db.Uuid
+  user       User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  deviceId   String               @db.VarChar(128)
+  publicKey  String
+  createdAt  DateTime             @default(now())
+  revokedAt  DateTime?
+  challenges BiometricChallenge[]
 
   @@unique([userId, deviceId])
 }
@@ -113,5 +116,30 @@ model RateLimit {
   count     Int      @default(1)
   expiresAt DateTime
 
+  @@index([expiresAt])
+}
+
+enum BiometricPurpose {
+  ENROLMENT
+  LOGIN
+}
+
+model BiometricChallenge {
+  id                     String               @id @default(uuid()) @db.Uuid
+  attemptId              String               @db.Uuid
+  attempt                AuthAttempt          @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+  purpose                BiometricPurpose
+  credentialId           String               @db.Uuid
+  // Login has a credential FK; enrolment is tied to a proposed key fingerprint.
+  registeredCredentialId String?              @db.Uuid
+  registeredCredential   BiometricCredential? @relation(fields: [registeredCredentialId], references: [id], onDelete: Cascade)
+  publicKeyHash          String               @db.Char(64)
+  publicKey              String?
+  payload                String               @db.VarChar(2048)
+  expiresAt              DateTime
+  consumedAt             DateTime?
+  createdAt              DateTime             @default(now())
+
+  @@index([attemptId, purpose, createdAt])
   @@index([expiresAt])
 }

@@ -1,4 +1,4 @@
-# AuthVault backend — Phase 3
+# AuthVault backend — Phase 4
 
 NestJS 12.3.2, strict TypeScript, PostgreSQL and Prisma 7.10.1. The only authentication
 result is an expiring pending-MFA credential. No access or refresh tokens are issued.
@@ -93,4 +93,18 @@ the one-time delivery of the newly created opaque attempt credential.
 See [API contract](../docs/api-contract.md), [Phase 3 notes](../docs/phase-3-implementation.md)
 and [validation](../docs/phase-3-validation.md). Remote deployment requires TLS
 termination, a restricted database role/connection, secret management and retention
-policies. Phase 4 is not implemented and requires approval.
+policies. Phase 5 is not implemented and requires approval.
+
+
+Phase 4 adds BiometricModule and migration 202610300002_biometric_challenges.
+Run npm run generate, npm run db:migrate, npm run build and restart the local
+server after updating. npm test now includes real-database biometric proof,
+expiry, cross-user, stage, replay, revocation and concurrency tests. Test software
+keys validate the server protocol only and are not native biometric evidence.
+
+Registration/login/status include subjectId for native credential lookup.
+Enrolment ends at ENROLMENT_COMPLETE; login proof ends at PENDING_OTP. No access
+or refresh tokens are issued and all protected account endpoints still reject.
+See ../docs/biometric-security-design.md for the explicit lack of server attestation,
+admin-only revocation policy and recovery/physical-device limitations. Phase 5
+has not started.

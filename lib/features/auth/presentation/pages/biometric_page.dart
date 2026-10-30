@@ -4,6 +4,9 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../core/widgets/VaultComponents/VaultComponents.dart';
 import '../providers/auth_ui_providers.dart';
+import '../providers/biometric_providers.dart';
+import '../providers/credentials_providers.dart';
+import '../../domain/entities/pending_attempt.dart';
 import '../widgets/pending_attempt_panel.dart';
 
 class BiometricPage extends ConsumerWidget {
@@ -11,6 +14,8 @@ class BiometricPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final readiness = ref.watch(biometricReadinessProvider);
+    final operation = ref.watch(biometricControllerProvider);
+    final attempt = ref.watch(pendingMfaProvider);
     return VaultPage(
       eyebrow: 'Layer 02 · Your device',
       title: 'A familiar touch.\nAn extra layer.',
@@ -64,9 +69,56 @@ class BiometricPage extends ConsumerWidget {
           child: const Text('Check device again'),
         ),
         const SizedBox(height: 16),
-        const VaultNotice(
-          'Verification is not available yet. Secure key enrolment and a server-issued challenge are required before a biometric prompt can verify access.',
-        ),
+        if (attempt == null)
+          const VaultNotice(
+            'Sign in or register first to obtain an authorized biometric context. No verification has occurred.',
+          ),
+        if (operation.hasError &&
+            [
+              PendingStage.enrolment,
+              PendingStage.biometric,
+            ].contains(attempt?.stage))
+          Padding(
+            padding: const EdgeInsets.only(bottom: 16),
+            child: VaultNotice(
+              operation.error is AuthFailure
+                  ? (operation.error! as AuthFailure).message
+                  : 'Device verification failed. Try again.',
+              error: true,
+            ),
+          ),
+        if (attempt != null &&
+            [
+              PendingStage.enrolment,
+              PendingStage.biometric,
+            ].contains(attempt.stage))
+          VaultAction(
+            label: attempt.stage == PendingStage.enrolment
+                ? 'Enrol device biometrics'
+                : 'Verify with biometrics',
+            loading: operation.isLoading,
+            onPressed: () async {
+              final stage = await ref
+                  .read(biometricControllerProvider.notifier)
+                  .verify();
+              if (stage == PendingStage.otp && context.mounted) {
+                context.go('/otp');
+              }
+            },
+          ),
+        if (attempt?.stage == PendingStage.otp)
+          VaultAction(
+            label: 'Continue to email verification',
+            onPressed: () => context.go('/otp'),
+          ),
+        if (attempt?.stage == PendingStage.enrolled)
+          VaultAction(
+            label: 'Return to login',
+            onPressed: () async {
+              await ref.read(pendingMfaProvider.notifier).abandon();
+              if (context.mounted) context.go('/login');
+            },
+          ),
         const SizedBox(height: 12),
         TextButton(
           onPressed: () => context.push('/otp'),

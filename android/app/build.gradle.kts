@@ -47,3 +47,8 @@ kotlin {
 flutter {
     source = "../.."
 }
+
+// Stable AndroidX CryptoObject integration; no unrestricted biometric boolean flow.
+dependencies {
+    implementation("androidx.biometric:biometric:1.1.0")
+}

@@ -3,11 +3,16 @@
 A Flutter/Dart and planned NestJS/PostgreSQL academic MFA prototype. Intended flow:
 password → biometric-protected challenge signature → email OTP → protected dashboard.
 
-**Phases 1–3 are implemented.** Registration and password login now use a real
-NestJS/PostgreSQL backend and return only expiring pending-MFA attempts. Biometric
-proof and OTP are not implemented yet, so the dashboard remains protected.
-Dashboard/profile designs are available only through **Development UI preview**
-in debug builds. Phase 4 requires approval.
+**Phases 1–4 are implemented.** Registration and password authentication use the
+real NestJS/PostgreSQL backend. Android can enrol a biometric-protected device key
+and verify server challenges with Keystore signatures. Biometric login advances
+only to pending OTP; email codes and completed sessions are not implemented yet,
+so the dashboard remains protected. Debug-only previews stay isolated.
+
+The emulator validates OS prompt/Keystore signing behavior, not physical hardware
+backing. iOS signing and server-side hardware attestation are not implemented.
+See [biometric security assumptions](docs/biometric-security-design.md).
+Phase 5 requires approval.
 
 ## Setup
 
@@ -37,8 +42,8 @@ For iOS install full Xcode, select its developer directory, run its first-launch
 setup, and install CocoaPods as required by native plugins. This machine currently
 has only Apple command-line tools; iOS builds cannot yet be validated. Then run
 `flutter doctor -v`, select an iOS simulator/device and `flutter run -d <device>`.
-Phase 4 will configure Face ID usage text, secure key entitlements, Android native
-prompt integration and device-specific deployment requirements. Generated platform
+iOS secure-key signing, Face ID configuration and entitlements remain future work.
+Phase 4 implements native Android signing only. Generated platform
 identifiers and debug release signing are placeholders; configure owned identifiers
 and release signing before distributing a build.
 
@@ -90,8 +95,7 @@ assert pixel equality. Inspect images separately. Build/run the normal app after
 because the inspection uses an integration-test entrypoint.
 
 Each subsequent phase updates documentation, runs applicable checks, fixes failures,
-suggests a commit and stops for approval. Next: Phase 4 biometric key enrolment and signed challenges, followed by OTP,
-sessions and full evaluation.
+suggests a commit and stops for approval. Next: Phase 5 email OTP, followed by completed sessions and full evaluation.
 
 Known limitations: no completed MFA yet; iOS toolchain incomplete;
 real-device biometrics untested; account recovery and device attestation remain
@@ -111,3 +115,27 @@ registration/login, and confirms the dashboard guard. It does not convert render
 surfaces or capture screenshots. It creates one local test
 account; its MFA attempts are revoked at the end. Rebuild the normal app after
 running integration entrypoints.
+
+
+Phase 4: [implementation](docs/phase-4-implementation.md),
+[security design and sequence](docs/biometric-security-design.md),
+[validation](docs/phase-4-validation.md).
+Configure a strong fingerprint in Android Settings before native checks. The host
+finger-event driver is test tooling only; the app always uses a real native prompt
+and the server always verifies signatures:
+
+```sh
+flutter drive --driver=test_driver/password_auth_driver.dart --target=integration_test/native_biometric_cancel_test.dart -d emulator-5554
+flutter drive --driver=test_driver/biometric_auth_driver.dart --target=integration_test/biometric_auth_test.dart -d emulator-5554
+```
+
+The second command feeds virtual fingerprint 1 to Android's emulator sensor. It
+requires that fingerprint to be enrolled in the OS. No successful authentication
+response is hardcoded in the app. These tests do not measure real biometric error
+rates or establish TEE/StrongBox protection. Rebuild the normal app after test
+entrypoints; do not mistake the unavailable OTP screen for working email MFA.
+
+The emulator setup created its first screen-lock PIN and fingerprint 1 for native
+validation. The generated test PIN is kept only in ignored local tooling at
+backend/.local/emulator-test-pin; it is not an AuthVault password or app fallback.
+Do not commit or print that file. No existing emulator PIN was replaced.

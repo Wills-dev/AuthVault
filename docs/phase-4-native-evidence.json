@@ -1,0 +1,8 @@
+{
+  "nativeEnrolment": "passed",
+  "serverVerifiedLogin": "PENDING_OTP",
+  "dashboard": "denied",
+  "hardwareBackedReported": false,
+  "physicalHardwareSecurity": "not established by emulator",
+  "otp": "not implemented"
+}

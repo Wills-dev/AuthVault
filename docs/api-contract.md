@@ -1,4 +1,4 @@
-# API contract — Phase 3
+# API contract — Phase 4
 
 Base path `/v1`. JSON, UTC ISO-8601 timestamps, no cookies. Remote APIs require
 HTTPS. Local debug Android uses `http://10.0.2.2:3000/v1` only.
@@ -16,7 +16,7 @@ HTTPS. Local debug Android uses `http://10.0.2.2:3000/v1` only.
 | GET /users/me | no completed-session mechanism yet | Always 403 MFA_REQUIRED |
 | GET /users/me/security | no completed-session mechanism yet | Always 403 MFA_REQUIRED |
 
-Registration and password-login responses contain **only** `attemptId` (UUID),
+Registration and password-login responses contain `subjectId` (authorized account UUID), `attemptId` (UUID),
 `attemptToken` (32 cryptographically random bytes, base64url), `stage` and `expiresAt`.
 Registration uses PENDING_ENROLMENT; login uses PENDING_BIOMETRIC. No access token,
 refresh token, user password/hash or biometric challenge is returned. Status omits
@@ -27,11 +27,11 @@ trimmed and must be 2–100 characters. Registration passwords must be 12–128
 characters with at least one non-whitespace character. Passwords are not trimmed.
 Login accepts 1–128 characters to avoid leaking password policy through login.
 Unknown fields are rejected. JSON bodies are limited to 8 KiB. Confirmation is
-client-side only and is not sent to the API. deviceId belongs to Phase 4 and is
-not accepted by Phase 3 DTOs.
+client-side only and is not sent to the API. Credential UUIDs are supplied only
+to biometric DTOs; password DTOs do not accept deviceId or client MFA-stage flags.
 
 Attempts expire after 600 seconds by default (startup configuration permits
-60–900 seconds). Only non-expired enrolment/biometric pending attempts can be
+60–900 seconds). Only non-expired restricted enrolment, enrolment-complete, biometric and OTP attempts can be
 queried or cancelled with a matching token. Invalid IDs/DTOs return 400; invalid,
 missing, expired or revoked pending credentials return 401 ATTEMPT_INVALID.
 
@@ -46,7 +46,7 @@ password is incorrect.", "requestId": "server-generated UUID" } }`.
 | 400 | REGISTRATION_UNAVAILABLE | Account cannot be created; no email-specific detail |
 | 401 | INVALID_CREDENTIALS | Same message for unknown email and wrong password |
 | 401 | ATTEMPT_INVALID | Missing, invalid, revoked or expired attempt credential |
-| 403 | MFA_REQUIRED | Protected resources reject all Phase 3 credentials |
+| 403 | MFA_REQUIRED | Protected resources reject all incomplete-MFA credentials |
 | 413 | PAYLOAD_TOO_LARGE | Request exceeds body limit |
 | 429 | RATE_LIMITED | Retry-After header states seconds to wait |
 | 503 | SERVICE_UNAVAILABLE | Database/service unavailable; fail closed |
@@ -64,22 +64,39 @@ Responses include Cache-Control: no-store and server-generated X-Request-Id.
 CORS is not enabled; native Flutter does not require it. Health routes are for
 local readiness and liveness; restrict their exposure when deploying.
 
+## Biometric contract
+
+Registration/login/status now also return subjectId, the authorized account UUID.
+Pending status supports PENDING_ENROLMENT, ENROLMENT_COMPLETE, PENDING_BIOMETRIC
+and PENDING_OTP. No accessToken or refreshToken is added. Enrolment completion
+requires a new password login before the login-specific biometric step.
+
+All three implemented biometric endpoints require X-MFA-Token, existing auth IP
+limits, validated JSON and a server-valid purpose-specific pending context.
+
+| Method/path | Request JSON | Result |
+| --- | --- | --- |
+| POST /biometric/challenge | attemptId, credentialId (v4 UUID), purpose ENROLMENT or LOGIN, publicKey | 200: challengeId, payload, purpose, credentialId, subjectId, attemptId, expiresAt, algorithm ES256_DER |
+| POST /biometric/enrol | attemptId, credentialId, challengeId, signature | 200: same attempt/subject/credential IDs, stage ENROLMENT_COMPLETE, expiresAt |
+| POST /biometric/verify | attemptId, credentialId, challengeId, signature | 200: same IDs, stage PENDING_OTP, expiresAt |
+
+publicKey is standard base64 SPKI DER for enrolment and must be the empty string
+for LOGIN (which uses the registered key). signature is standard base64 DER ECDSA,
+not P1363. payload is unpadded base64url; sign its decoded bytes exactly with
+SHA256withECDSA. Protocol/context encoding is specified in biometric-security-design.md.
+
+Challenges expire within two minutes, are bounded by attempt expiry and have one
+successful use. New issuance invalidates earlier challenges for the same attempt.
+Five issuances and five proof submissions/attempt/ten-minute fixed window are
+allowed after pending authorization. Generic 401 BIOMETRIC_REJECTED covers bad
+stage, ownership, key status, purpose, expiry, replay and signature. Existing 400
+validation, 429 rate limiting and safe service-error envelopes remain. No credential
+lookup/replacement/recovery or password-only revocation endpoint is exposed.
+
+OTP, refresh and completed-session endpoints remain reserved/unimplemented.
+
 ## Reserved — not implemented
 
-Biometric enrolment/signature verification, OTP issue/resend/verification, completed
-access sessions, refresh rotation and logout remain future work. The previous
-Phase 1 challenge contract was a draft: Phase 3 returns no challenge and cannot
-complete MFA. Phase 4 must specify device-bound challenge encoding and key proof
-before adding those endpoints. Future token issuance must require every stage.
-
-| Reserved path | Planned phase / boundary |
-| --- | --- |
-| POST /biometric/enrol | Phase 4: restricted enrolment proof of possession |
-| POST /biometric/verify | Phase 4: signed server challenge, no client boolean proof |
-| POST /otp/resend | Phase 5: rate-limited delivery bound to a valid attempt |
-| POST /otp/verify | Phase 5: single-use expiring code; completed access only after all stages |
-| POST /auth/refresh | Phase 6: rotate hashed refresh records and detect reuse |
-| POST /auth/logout | Phase 6: revoke completed-session refresh family |
-
-These reserved paths have no Phase 3 handlers and return not-found responses.
-Their DTOs and challenge/signature encoding must be finalized before implementation.
+POST /otp/resend and POST /otp/verify belong to Phase 5. POST /auth/refresh and
+POST /auth/logout belong to Phase 6. They have no handlers and return not found.
+No email code or completed-session token is issued by the biometric endpoints.

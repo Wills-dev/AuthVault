@@ -123,3 +123,12 @@ sequenceDiagram
 Registration never grants a full session. Pending-attempt credentials must never be
 accepted by access-token guards. Remote APIs require HTTPS; development exceptions
 must be narrowly scoped. Backend logs omit passwords, OTPs, tokens and private keys.
+
+## Phase 4 implementation
+
+BiometricModule now owns challenge/proof services, DTOs and a transactional
+repository. Android Keystore/AndroidX signing lives behind BiometricKeys with a
+MethodChannel adapter isolated from widgets. Domain interfaces remain pure Dart;
+Dio calls stay in data sources. Biometric UI state is coordinated with Riverpod and
+pending status reconciliation. Read biometric-security-design.md for exact byte
+encoding, locking, stage permissions, recovery and hardware trust limitations.
