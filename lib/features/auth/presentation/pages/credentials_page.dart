@@ -4,7 +4,8 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../core/widgets/VaultComponents/VaultComponents.dart';
 import '../../domain/input_validation.dart';
-import '../providers/auth_ui_providers.dart';
+import '../providers/credentials_providers.dart';
+import '../../domain/entities/pending_attempt.dart';
 import '../widgets/auth_field.dart';
 
 class CredentialsPage extends ConsumerStatefulWidget {
@@ -28,14 +29,27 @@ class _CredentialsPageState extends ConsumerState<CredentialsPage> {
     super.dispose();
   }
 
-  AsyncNotifierProvider<SubmissionController, void> get submission =>
-      widget.registration ? registrationSubmissionProvider : submissionProvider;
+  AsyncNotifierProvider<CredentialsController, PendingAttempt?>
+  get submission => widget.registration
+      ? registerCredentialsProvider
+      : loginCredentialsProvider;
 
-  void submit() {
+  Future<void> submit() async {
     if (ref.read(submission).isLoading) return;
     if (form.currentState!.validate()) {
       FocusScope.of(context).unfocus();
-      ref.read(submission.notifier).submit();
+      final accepted = await ref
+          .read(submission.notifier)
+          .submit(
+            email: email.text,
+            password: password.text,
+            fullName: widget.registration ? name.text : null,
+          );
+      if (accepted && mounted) {
+        password.clear();
+        confirmation.clear();
+        context.go('/biometric');
+      }
     }
   }
 
@@ -114,10 +128,12 @@ class _CredentialsPageState extends ConsumerState<CredentialsPage> {
                     ),
                   ),
                 if (state.hasError)
-                  const Padding(
-                    padding: EdgeInsets.only(bottom: 16),
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 16),
                     child: VaultNotice(
-                      'Authentication is not connected yet. Your details were not sent or saved. Please try again after backend setup.',
+                      state.error is AuthFailure
+                          ? (state.error! as AuthFailure).message
+                          : 'Unable to complete the request. Please try again.',
                       error: true,
                     ),
                   ),

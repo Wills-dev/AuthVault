@@ -7,7 +7,8 @@ registration, login, biometric verification, OTP, sessions or protected resource
 Phase 2 replaces the temporary foundation page with authentication UI and debug
 screen previews. Validation is in auth/domain, the local biometric capability
 service is in core/security, and async UI state is in auth/presentation/providers.
-There is still no backend or session implementation. See phase-2-implementation.md
+Phase 3 adds the NestJS/PostgreSQL backend and Flutter repository/data-source integration.
+Only pending MFA credentials exist; completed sessions remain unimplemented. See phase-2-implementation.md
 and navigation.md for current UI boundaries.
 
 ## Layout

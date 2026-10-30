@@ -38,3 +38,13 @@ Login and registration have separate widget identities and separate auto-dispose
 submission providers; OTP owns its own provider too. Going back through the normal
 stack preserves the form while mounted; replacing a credential route does not reuse
 password input in the other form. Scrollable shells use screen-specific identity.
+
+## Phase 3 update
+
+Login and registration submit through the real repository. A successful backend
+response moves to /biometric with only an in-memory pending attempt. Registration
+shows enrolment required; login shows biometric and email verification required.
+The pending-status endpoint confirms the attempt. Cancel clears/revokes the attempt
+and returns to login. OTP remains informational/unavailable. Both normal protected
+routes still always redirect to login, including when password authentication has
+succeeded. Debug previews remain isolated and create no completed session.

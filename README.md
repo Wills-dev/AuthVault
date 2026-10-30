@@ -3,11 +3,11 @@
 A Flutter/Dart and planned NestJS/PostgreSQL academic MFA prototype. Intended flow:
 password → biometric-protected challenge signature → email OTP → protected dashboard.
 
-**Phases 1 and 2 are implemented.** Welcome, login, registration, device-readiness
-and email-code screens are available. Dashboard/profile designs live in a labeled
-debug-only gallery: choose **Development UI preview** from welcome. There is no
-backend, authenticated session or simulated successful login. Normal protected
-routes redirect to login. Phase 3 requires explicit approval.
+**Phases 1–3 are implemented.** Registration and password login now use a real
+NestJS/PostgreSQL backend and return only expiring pending-MFA attempts. Biometric
+proof and OTP are not implemented yet, so the dashboard remains protected.
+Dashboard/profile designs are available only through **Development UI preview**
+in debug builds. Phase 4 requires approval.
 
 ## Setup
 
@@ -42,11 +42,21 @@ prompt integration and device-specific deployment requirements. Generated platfo
 identifiers and debug release signing are placeholders; configure owned identifiers
 and release signing before distributing a build.
 
-PostgreSQL, its client and Docker are not installed. Install PostgreSQL directly or
-use Docker for the Phase 3 database. Backend setup will supply an `.env.example`
-with DATABASE_URL, signing/HMAC secrets and SMTP settings, committed migrations and
-seed instructions. No database or email service is needed to run Phase 1. Never
-commit `.env` files or real secrets. Do not place backend secrets in Dart defines.
+The Phase 3 backend setup is in [backend/README.md](backend/README.md), including
+exact PostgreSQL installation/fallback commands, generated local credentials,
+migrations, server startup and isolated database tests. PostgreSQL 17.10 was
+provisioned locally for validation; Docker remains unavailable. Never commit .env
+files or real secrets.
+
+Start the backend before submitting a mobile form. Android debug defaults to
+http://10.0.2.2:3000/v1. Override centrally when needed:
+
+```sh
+flutter run -d emulator-5554 --dart-define=API_BASE_URL=http://10.0.2.2:3000/v1
+```
+
+Release builds must configure an HTTPS URL ending in /v1. Local HTTP exceptions
+exist only in the Android debug manifest/resource overlay.
 
 ## Decisions and structure
 
@@ -80,9 +90,24 @@ assert pixel equality. Inspect images separately. Build/run the normal app after
 because the inspection uses an integration-test entrypoint.
 
 Each subsequent phase updates documentation, runs applicable checks, fixes failures,
-suggests a commit and stops for approval. Next: Phase 3 backend registration and password login, followed by native signing,
-OTP, sessions and full evaluation.
+suggests a commit and stops for approval. Next: Phase 4 biometric key enrolment and signed challenges, followed by OTP,
+sessions and full evaluation.
 
-Known limitations: no real MFA yet; iOS toolchain incomplete; database unavailable;
+Known limitations: no completed MFA yet; iOS toolchain incomplete;
 real-device biometrics untested; account recovery and device attestation remain
 explicit design limitations. No academic evaluation results are fabricated.
+
+
+Phase 3: [implementation/security notes](docs/phase-3-implementation.md),
+[API contract](docs/api-contract.md), [validation](docs/phase-3-validation.md).
+With the backend running, execute the real emulator integration:
+
+```sh
+flutter drive --driver=test_driver/password_auth_driver.dart --target=integration_test/password_auth_test.dart -d emulator-5554
+```
+
+The integration generates random fixture credentials, verifies pending-only
+registration/login, and confirms the dashboard guard. It does not convert rendering
+surfaces or capture screenshots. It creates one local test
+account; its MFA attempts are revoked at the end. Rebuild the normal app after
+running integration entrypoints.

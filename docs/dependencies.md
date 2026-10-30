@@ -20,13 +20,13 @@ physical-device testing. Do not upgrade dependencies without repeating checks.
 Unused starter Cupertino icons were removed. Security/network dependencies are
 reserved for subsequent phases and currently make no calls. No secrets are stored.
 
-Backend dependencies will be selected and locked together in Phase 3 rather than
-claiming an untested dependency set. Prefer NestJS stable, strict TypeScript,
-PostgreSQL, Prisma, Argon2id, JWT tooling, Nodemailer and Jest. Node 24.22.1 is
-installed and pinned in .nvmrc. Official requirements checked during planning:
-[NestJS](https://docs.nestjs.com/cli/overview),
-[Prisma](https://docs.prisma.io/docs/orm/reference/system-requirements).
-Mobile package metadata: [Riverpod](https://pub.dev/packages/flutter_riverpod),
-[GoRouter](https://pub.dev/packages/go_router), [Dio](https://pub.dev/packages/dio),
-[local_auth](https://pub.dev/packages/local_auth),
-[secure storage](https://pub.dev/packages/flutter_secure_storage).
+Backend dependencies are now selected and locked in backend/package.json and
+package-lock.json: NestJS 12.3.2, Config 12.0.1, Prisma/client/adapter-pg 7.10.1,
+Argon2 0.45.1, pg 8.23.1, Helmet 8.3.0, class-validator 0.15.1,
+class-transformer 0.5.1, TypeScript 5.9.3, Jest 30.5.2 and ts-jest 29.4.15.
+They were verified together with strict compilation and executed tests. No JWT or
+mail library was added prematurely. Node 24.22.1 remains pinned in .nvmrc.
+[Official NestJS requirements](https://docs.nestjs.com/cli/overview) and
+[Prisma requirements](https://docs.prisma.io/docs/orm/reference/system-requirements)
+were checked during selection. Runtime dependency audit results are recorded in
+Phase 3 validation; an audit is a snapshot rather than a security guarantee.

@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../core/widgets/VaultComponents/VaultComponents.dart';
 import '../providers/auth_ui_providers.dart';
+import '../widgets/pending_attempt_panel.dart';
 
 class BiometricPage extends ConsumerWidget {
   const BiometricPage({super.key});
@@ -15,6 +16,7 @@ class BiometricPage extends ConsumerWidget {
       title: 'A familiar touch.\nAn extra layer.',
       description: 'Use your fingerprint or face through your device’s secure biometric prompt. Biometric images stay with your operating system.',
       children: [
+        const PendingAttemptPanel(),
         const Center(
           child: Padding(
             padding: EdgeInsets.all(16),

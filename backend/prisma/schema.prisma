@@ -1,0 +1,117 @@
+generator client {
+  provider     = "prisma-client"
+  output       = "../src/generated/prisma"
+  moduleFormat = "esm"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum MfaStage {
+  PENDING_ENROLMENT
+  PENDING_BIOMETRIC
+  PENDING_OTP
+  COMPLETED
+  REVOKED
+}
+
+model User {
+  id           String                @id @default(uuid()) @db.Uuid
+  email        String                @unique @db.VarChar(254)
+  fullName     String                @db.VarChar(100)
+  passwordHash String
+  createdAt    DateTime              @default(now())
+  attempts     AuthAttempt[]
+  credentials  BiometricCredential[]
+  sessions     AuthSession[]
+  events       AuditEvent[]
+}
+
+model AuthAttempt {
+  id            String         @id @default(uuid()) @db.Uuid
+  userId        String         @db.Uuid
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash     String         @unique @db.Char(64)
+  stage         MfaStage
+  expiresAt     DateTime
+  createdAt     DateTime       @default(now())
+  otpChallenges OtpChallenge[]
+
+  @@index([userId, createdAt])
+  @@index([expiresAt])
+}
+
+// Future persistence only: Phase 3 does not enrol keys or verify signatures.
+model BiometricCredential {
+  id        String    @id @default(uuid()) @db.Uuid
+  userId    String    @db.Uuid
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  deviceId  String    @db.VarChar(128)
+  publicKey String
+  createdAt DateTime  @default(now())
+  revokedAt DateTime?
+
+  @@unique([userId, deviceId])
+}
+
+// Future persistence only. codeMac will hold keyed verification material.
+model OtpChallenge {
+  id         String      @id @default(uuid()) @db.Uuid
+  attemptId  String      @db.Uuid
+  attempt    AuthAttempt @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+  codeMac    String      @db.Char(64)
+  expiresAt  DateTime
+  consumedAt DateTime?
+  failures   Int         @default(0)
+  createdAt  DateTime    @default(now())
+
+  @@index([attemptId, createdAt])
+  @@index([expiresAt])
+}
+
+// No session or refresh tokens are issued in Phase 3.
+model AuthSession {
+  id            String         @id @default(uuid()) @db.Uuid
+  userId        String         @db.Uuid
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt     DateTime       @default(now())
+  expiresAt     DateTime
+  revokedAt     DateTime?
+  refreshTokens RefreshToken[]
+
+  @@index([userId, revokedAt])
+}
+
+model RefreshToken {
+  id         String      @id @default(uuid()) @db.Uuid
+  sessionId  String      @db.Uuid
+  session    AuthSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  tokenHash  String      @unique @db.Char(64)
+  expiresAt  DateTime
+  consumedAt DateTime?
+  revokedAt  DateTime?
+  createdAt  DateTime    @default(now())
+
+  @@index([sessionId])
+}
+
+model AuditEvent {
+  id          String   @id @default(uuid()) @db.Uuid
+  userId      String?  @db.Uuid
+  user        User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  kind        String   @db.VarChar(50)
+  subjectHash String?  @db.Char(64)
+  createdAt   DateTime @default(now())
+
+  @@index([userId, createdAt])
+  @@index([createdAt])
+}
+
+model RateLimit {
+  key       String   @id @db.Char(64)
+  count     Int      @default(1)
+  expiresAt DateTime
+
+  @@index([expiresAt])
+}

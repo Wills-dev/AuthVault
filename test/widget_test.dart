@@ -1,6 +1,9 @@
 import 'dart:async';
 
 import 'package:authvault/app/app.dart';
+import 'package:authvault/features/auth/presentation/providers/credentials_providers.dart';
+import 'package:authvault/features/auth/domain/entities/pending_attempt.dart';
+import 'package:authvault/features/auth/domain/repositories/auth_repository.dart';
 import 'package:authvault/app/router/app_router.dart';
 import 'package:authvault/features/auth/presentation/providers/auth_ui_providers.dart';
 import 'package:flutter/material.dart';
@@ -25,6 +28,40 @@ class FailedOtpAction extends AuthUiActions {
   Future<void> submit() async => throw AuthUiOtpFailure(failure);
 }
 
+class OfflineRepository implements AuthRepository {
+  OfflineRepository(this.action);
+  final AuthUiActions? action;
+  Future<PendingAttempt> unavailable() async {
+    try {
+      if (action != null) await action!.submit();
+    } catch (_) {
+      /* Controlled fixture. */
+    }
+    throw const AuthFailure(
+      'NETWORK_ERROR',
+      'Unable to reach AuthVault. Check your connection and try again.',
+    );
+  }
+
+  @override
+  Future<PendingAttempt> login({
+    required String email,
+    required String password,
+  }) => unavailable();
+  @override
+  Future<PendingAttempt> register({
+    required String fullName,
+    required String email,
+    required String password,
+  }) => unavailable();
+  @override
+  Future<PendingAttempt> status(PendingAttempt attempt) => unavailable();
+  @override
+  Future<void> revoke(PendingAttempt attempt) async {}
+  @override
+  void cancel() {}
+}
+
 class ReadyDevice extends BiometricCapabilities {
   ReadyDevice(this.readiness);
   final BiometricReadiness readiness;
@@ -42,6 +79,9 @@ Future<ProviderContainer> open(
 }) async {
   final container = ProviderContainer(
     overrides: [
+      credentialsRepositoryProvider.overrideWith(
+        (ref, scope) => OfflineRepository(action),
+      ),
       biometricCapabilitiesProvider.overrideWithValue(ReadyDevice(readiness)),
       if (action != null) authUiActionsProvider.overrideWithValue(action),
       otpTimingProvider.overrideWithValue(timing),
@@ -178,7 +218,7 @@ void main() {
     await tester.enterText(find.byType(TextFormField).first, 'a@example.com');
     await tester.enterText(find.byType(TextFormField).last, 'password');
     await tapText(tester, 'Continue securely');
-    expect(find.textContaining('Your details were not sent'), findsOneWidget);
+    expect(find.textContaining('Unable to reach AuthVault'), findsOneWidget);
     expect(
       container.read(appRouterProvider).routeInformationProvider.value.uri.path,
       '/login',
@@ -196,11 +236,13 @@ void main() {
       await tester.tap(find.text('Continue securely'));
       await tester.pump();
       expect(find.byType(CircularProgressIndicator), findsOneWidget);
-      await container.read(submissionProvider.notifier).submit();
+      await container
+          .read(loginCredentialsProvider.notifier)
+          .submit(email: 'a@example.com', password: 'password');
       expect(action.calls, 1);
       action.completer.completeError(const AuthUiUnavailable());
       await tester.pumpAndSettle();
-      expect(find.textContaining('Your details were not sent'), findsOneWidget);
+      expect(find.textContaining('Unable to reach AuthVault'), findsOneWidget);
       expect(find.byType(CircularProgressIndicator), findsNothing);
     },
   );

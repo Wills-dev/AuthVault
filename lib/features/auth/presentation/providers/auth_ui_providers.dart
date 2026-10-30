@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/security/biometric_capabilities.dart';
 export '../../../../core/security/biometric_capabilities.dart';
 
-/// No credentials are sent or persisted in this phase.
+/// OTP remains unavailable until Phase 5; credential forms use credentials_providers.
 class AuthUiActions {
   Future<void> submit() async {
     throw const AuthUiUnavailable();
@@ -36,15 +36,6 @@ class SubmissionController extends AsyncNotifier<void> {
   }
 }
 
-final submissionProvider =
-    AsyncNotifierProvider.autoDispose<SubmissionController, void>(
-      SubmissionController.new,
-    );
-
-final registrationSubmissionProvider =
-    AsyncNotifierProvider.autoDispose<SubmissionController, void>(
-      SubmissionController.new,
-    );
 final otpSubmissionProvider =
     AsyncNotifierProvider.autoDispose<SubmissionController, void>(
       SubmissionController.new,
