@@ -1,17 +1,19 @@
 # AuthVault
 
-A Flutter/Dart and planned NestJS/PostgreSQL academic MFA prototype. Intended flow:
+A Flutter/Dart and NestJS/PostgreSQL academic MFA prototype. Implemented flow:
 password → biometric-protected challenge signature → email OTP → protected dashboard.
 
 **Phases 1–5 are implemented; Phase 6 audit and hardening are complete.** Registration and password authentication use
-NestJS/PostgreSQL. Android Keystore signatures prove device biometric authorization;
-SMTP email OTP completes MFA before access and rotating refresh credentials are issued.
+NestJS/PostgreSQL. The stock Android client authorizes Keystore signing through a
+native biometric prompt; the backend verifies signatures without remote key attestation.
+SMTP email OTP completes the implemented sequence before access and rotating refresh credentials are issued.
 The protected dashboard retrieves real account/security data. Debug previews remain isolated.
 
 Android emulator checks establish OS prompt/signature behavior, not physical hardware
 backing. iOS signing, recovery and server-side hardware attestation remain unimplemented.
 See [Phase 5 architecture and security](docs/phase-5-implementation.md) and
-[actual validation results](docs/phase-5-validation.md). Phase 6 audit and successful manual native MFA retest are recorded below. Phase 7 requires approval.
+[actual validation results](docs/phase-5-validation.md). Phase 6 audit and successful manual native MFA retest are recorded below.
+Phase 7 academic documentation is available in the [submission package](#phase-7-academic-documentation).
 
 ## Setup
 
@@ -43,8 +45,9 @@ has only Apple command-line tools; iOS builds cannot yet be validated. Then run
 `flutter doctor -v`, select an iOS simulator/device and `flutter run -d <device>`.
 iOS secure-key signing, Face ID configuration and entitlements remain future work.
 Phase 4 implements native Android signing only. Generated platform
-identifiers and debug release signing are placeholders; configure owned identifiers
-and release signing before distributing a build.
+identifiers remain placeholders; configure owned identifiers and release signing
+before distributing a build. Without owned signing properties, release audit builds
+are unsigned and do not fall back to the debug signing identity.
 
 The Phase 3 backend setup is in [backend/README.md](backend/README.md), including
 exact PostgreSQL installation/fallback commands, generated local credentials,
@@ -64,16 +67,17 @@ exist only in the Android debug manifest/resource overlay.
 
 ## Decisions and structure
 
-Flutter stays at the root; `backend/` reserves the NestJS boundary, and `docs/`
+Flutter stays at the root; `backend/` contains the NestJS service, and `docs/`
 holds design and security contracts. See [architecture](docs/architecture.md),
-[draft API](docs/api-contract.md), [dependency decisions](docs/dependencies.md) and
+[API contract](docs/api-contract.md), [dependency decisions](docs/dependencies.md) and
 [evaluation methodology](docs/evaluation.md).
 
 Material 3 uses navy, white and restrained teal, shared spacing/radius tokens,
 48 logical-pixel button targets, native typography and scrollable safe-area layout.
 System text scaling is retained. No custom fonts or decorative image dependencies
-are needed. Riverpod owns DI; GoRouter owns navigation; network and security
-plugins are installed for later phases but do not imply implemented security.
+are needed. Riverpod owns DI; GoRouter owns navigation; repositories and native adapters
+separate network/security operations from widgets. Implemented controls and their
+limits are documented in the Phase 6 audit and academic report.
 
 ## Validation and workflow
 
@@ -93,8 +97,9 @@ The driver captures images in `docs/images/phase-2/`; its capture callback does 
 assert pixel equality. Inspect images separately. Build/run the normal app afterward
 because the inspection uses an integration-test entrypoint.
 
-Each subsequent phase updates documentation, runs applicable checks, fixes failures,
-suggests a commit and stops for approval. Phase 6 has not started.
+Phases 1–6 retain their dated implementation and validation records. Phase 7
+consolidates academic documentation and defense materials; no additional
+development phase has started.
 
 Known limitations: production inbox delivery and physical devices remain unvalidated; iOS toolchain incomplete;
 real-device biometrics untested; account recovery and device attestation remain
@@ -212,4 +217,33 @@ node scripts/summarize-phase6.mjs
 node scripts/audit-pub.mjs
 ```
 
-No production deployment or Phase 7 work was performed.
+No production deployment was performed. Phase 7 documentation is linked below.
+The evidence/capture scripts above write Phase 6 paths; run new captures or
+aggregations in an isolated copy to preserve the submitted historical record.
+
+
+## Phase 7: academic documentation
+
+The academic package synthesizes the implemented system and existing Phase 6 evidence;
+it introduces no application features and claims no new application test execution.
+
+- [Six-chapter project report](docs/academic/project-report.md)
+- [Verified references and evidence index](docs/academic/references.md)
+- [Seven architecture diagrams](docs/academic/architecture-diagrams.md)
+- [Testing and evaluation](docs/academic/testing-and-evaluation.md)
+- [Defense preparation: 38 questions and answers](docs/academic/defense-questions.md)
+- [15-slide presentation outline](docs/academic/presentation-outline.md)
+- [Reproducible demonstration guide](docs/academic/demonstration-guide.md)
+- [Submission checklist and institutional details to confirm](docs/academic/submission-checklist.md)
+
+Recorded results remain **87 Flutter tests**, **69 backend tests**, **99.45% backend
+line / 83.74% branch coverage**, **76.84% Flutter reported line coverage**, a
+**29-second manual native scenario**, and a separate **390.90 ms local server-flow
+median** excluding human/native biometric time. These are bounded local results,
+not production benchmarks or a participant study.
+
+The report discloses missing server-side attestation, emulator software backing,
+absent physical-device/iOS and external-email validation, enumeration, dependency
+and operational gaps. Email codes do not establish NIST-conformant out-of-band
+authentication or phishing resistance. Institution-specific metadata/formatting,
+final manuscript/slide export and defense rehearsal remain submission tasks.
